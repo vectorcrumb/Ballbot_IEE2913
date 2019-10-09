@@ -1,0 +1,11 @@
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+VNHDriver	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+setSpeed	KEYWORD2
+begin	    KEYWORD2

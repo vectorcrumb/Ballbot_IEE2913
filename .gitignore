@@ -14,7 +14,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+#lib/
 lib64/
 parts/
 sdist/
@@ -102,3 +102,11 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+
+########### CUSTOM #############
+desktop.ini
+cad/electrical/SparkFun-Eagle-Libraries-master
+cad/electrical/Teensy356.lbr
+code/sim/linmodel_ert_rtw
+code/sim/slprj

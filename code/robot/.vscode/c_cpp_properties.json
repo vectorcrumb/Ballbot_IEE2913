@@ -1,0 +1,25 @@
+{
+    "configurations": [
+      {
+        "name": "VisualTeensy",
+        "includePath": [
+          "src/**",
+          "lib/**",
+          "E:/Arduino/hardware/teensy/avr/cores/teensy3/**",
+          "E:/Users/lucas/Documents/Arduino/libraries/**"
+        ],
+        "forcedInclude": [],
+        "defines": [
+          "__MK64FX512__",
+          "TEENSYDUINO=146",
+          "F_CPU=120000000",
+          "USB_SERIAL",
+          "LAYOUT_US_ENGLISH",
+          "ARDUINO"
+        ],
+        "compilerPath": "E:/Arduino/hardware/tools/arm/bin/arm-none-eabi-gcc.exe",
+        "intelliSenseMode": "gcc-x64"
+      }
+    ],
+    "version": 4
+  }

@@ -1,0 +1,39 @@
+{
+    "version": "1",
+    "target": "vsCode",
+    "buildSystem": "makefile",
+    "configurations": [
+      {
+        "name": "default",
+        "guid": "2c080dbf-4211-4657-bf40-f68ec22d0a2f",
+        "setupType": "quick",
+        "boardTxtPath": "E:\\Arduino\\hardware\\teensy\\avr\\boards.txt",
+        "coreBase": "E:\\Arduino\\hardware\\teensy\\avr\\cores\\teensy3",
+        "compilerBase": "E:\\Arduino\\hardware\\tools\\arm",
+        "makefileExtension": null,
+        "copyBoardTxt": false,
+        "copyCore": false,
+        "sharedLibraries": [],
+        "localLibraries": [
+          "Adafruit_GFX",
+          "Adafruit_SSD1306",
+          "Encoder",
+          "I2Cdev",
+          "MPU6050",
+          "SD",
+          "SPI",
+          "VNHDriver",
+          "Wire"
+        ],
+        "board": {
+          "name": "Teensy 3.5",
+          "options": {
+            "USB Type": "Serial",
+            "CPU Speed": "120 MHz",
+            "Optimize": "Faster",
+            "Keyboard Layout": "US English"
+          }
+        }
+      }
+    ]
+  }
