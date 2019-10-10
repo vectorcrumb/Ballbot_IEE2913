@@ -33,7 +33,7 @@
                         "layer_details": "mixed",
                         "layer_type": "Bottom"
                     },
-                    "filename_format": "%PREFIX/copper_top.sol",
+                    "filename_format": "%PREFIX/copper_bot.sol",
                     "layers": [
                         17,
                         18,
@@ -46,7 +46,7 @@
                 },
                 {
                     "advanced_options": {
-                        "mirror": false,
+                        "mirror": true,
                         "offset_x": 0,
                         "offset_y": 0,
                         "rotate": false,
@@ -60,7 +60,7 @@
                     "filename_format": "%PREFIX/profile.sol",
                     "layers": [
                     ],
-                    "milling": true,
+                    "milling": false,
                     "polarity": "positive",
                     "type": "gerber_layer"
                 }

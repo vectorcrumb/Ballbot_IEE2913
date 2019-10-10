@@ -6,7 +6,7 @@
         "kind": "build",
         "isDefault": true
       },
-      "command": "E:/VisualTeensy_v091/make.exe",
+      "command": "E:/VisualTeensy_v097/make.exe",
       "args": [
         "all",
         "-j",
@@ -14,12 +14,23 @@
       ]
     },
     {
-      "label": "Upload (Teensy Uploader)",
+      "label": "Clean",
       "group": {
         "kind": "build",
         "isDefault": true
       },
-      "command": "E:/VisualTeensy_v091/MyMake/make.exe",
+      "command": "E:/VisualTeensy_v097/make.exe",
+      "args": [
+        "clean"
+      ]
+    },
+    {
+      "label": "Upload (teensy.exe)",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "command": "E:/VisualTeensy_v097/make.exe",
       "args": [
         "upload",
         "-j",
@@ -32,35 +43,11 @@
         "kind": "build",
         "isDefault": true
       },
-      "command": "E:/VisualTeensy_v091/MyMake/make.exe",
+      "command": "E:/VisualTeensy_v097/make.exe",
       "args": [
         "uploadTy",
         "-j",
         "-Otarget"
-      ]
-    },
-    {
-      "label": "Upload (CLI)",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "command": "E:/VisualTeensy_v091/MyMake/make.exe",
-      "args": [
-        "uploadCLI",
-        "-j",
-        "-Otarget"
-      ]
-    },
-    {
-      "label": "Clean",
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "command": "E:/VisualTeensy_v091/MyMake/make.exe",
-      "args": [
-        "clean"
       ]
     }
   ],
@@ -69,6 +56,7 @@
   "problemMatcher": "$gcc",
   "presentation": {
     "echo": true,
+    "clear": true,
     "reveal": "always",
     "focus": false,
     "panel": "shared",

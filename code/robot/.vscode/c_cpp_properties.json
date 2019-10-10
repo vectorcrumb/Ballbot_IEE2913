@@ -1,25 +1,32 @@
 {
-    "configurations": [
-      {
-        "name": "VisualTeensy",
-        "includePath": [
-          "src/**",
-          "lib/**",
-          "E:/Arduino/hardware/teensy/avr/cores/teensy3/**",
-          "E:/Users/lucas/Documents/Arduino/libraries/**"
-        ],
-        "forcedInclude": [],
-        "defines": [
-          "__MK64FX512__",
-          "TEENSYDUINO=146",
-          "F_CPU=120000000",
-          "USB_SERIAL",
-          "LAYOUT_US_ENGLISH",
-          "ARDUINO"
-        ],
-        "compilerPath": "E:/Arduino/hardware/tools/arm/bin/arm-none-eabi-gcc.exe",
-        "intelliSenseMode": "gcc-x64"
-      }
-    ],
-    "version": 4
-  }
+  "configurations": [
+    {
+      "name": "VisualTeensy",
+      "includePath": [
+        "src/**",
+        "E:\\Arduino\\hardware\\teensy\\avr\\cores\\teensy3",
+        "lib/I2Cdev/**",
+        "lib/MPU6050/**",
+        "lib/VNHDriver/**",
+        "lib/Adafruit_GFX/**",
+        "lib/Encoder/**",
+        "lib/Wire/**",
+        "lib/SPI/**",
+        "lib/SD/**",
+        "lib/Adafruit_SSD1306/**"
+      ],
+      "forcedInclude": [],
+      "defines": [
+        "__MK64FX512__",
+        "TEENSYDUINO=146",
+        "F_CPU=120000000",
+        "USB_SERIAL",
+        "LAYOUT_US_ENGLISH",
+        "ARDUINO"
+      ],
+      "compilerPath": "E:/Arduino/hardware/tools/arm/bin/arm-none-eabi-gcc.exe",
+      "intelliSenseMode": "gcc-x64"
+    }
+  ],
+  "version": 4
+}
