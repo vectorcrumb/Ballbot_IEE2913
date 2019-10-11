@@ -36,9 +36,9 @@
   typedef class HardwareSPI SPIClass;
 #endif
 
-#include <Wire.h>
-#include <SPI.h>
-#include <Adafruit_GFX.h>
+#include "../Wire/Wire.h"
+#include "../SPI/SPI.h"
+#include "../Adafruit_GFX/Adafruit_GFX.h"
 
 #if defined(__AVR__)
   typedef volatile uint8_t  PortReg;

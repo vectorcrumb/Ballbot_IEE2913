@@ -21,7 +21,8 @@
         "Adafruit_SSD1306",
         "I2Cdev",
         "MPU6050",
-        "VNHDriver"
+        "VNHDriver",
+        "MPU9250"
       ],
       "board": {
         "name": "Teensy 3.5",

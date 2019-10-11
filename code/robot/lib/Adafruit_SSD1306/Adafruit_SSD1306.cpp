@@ -36,7 +36,8 @@
  */
 
 #ifdef __AVR__
- #include <avr/pgmspace.h>
+//  #include <avr/pgmspace.h>
+  #include "../../core/avr/pgmspace.h"
 #elif defined(ESP8266) || defined(ESP32)
  #include <pgmspace.h>
 #else
@@ -48,7 +49,7 @@
  #include <util/delay.h>
 #endif
 
-#include <Adafruit_GFX.h>
+#include "../Adafruit_GFX/Adafruit_GFX.h"
 #include "Adafruit_SSD1306.h"
 #include "splash.h"
 
@@ -455,13 +456,13 @@ boolean Adafruit_SSD1306::begin(uint8_t vcs, uint8_t addr, boolean reset,
     return false;
 
   clearDisplay();
-  if(HEIGHT > 32) {
-    drawBitmap((WIDTH - splash1_width) / 2, (HEIGHT - splash1_height) / 2,
-      splash1_data, splash1_width, splash1_height, 1);
-  } else {
-    drawBitmap((WIDTH - splash2_width) / 2, (HEIGHT - splash2_height) / 2,
-      splash2_data, splash2_width, splash2_height, 1);
-  }
+  // if(HEIGHT > 32) {
+  //   drawBitmap((WIDTH - splash1_width) / 2, (HEIGHT - splash1_height) / 2,
+  //     splash1_data, splash1_width, splash1_height, 1);
+  // } else {
+  //   drawBitmap((WIDTH - splash2_width) / 2, (HEIGHT - splash2_height) / 2,
+  //     splash2_data, splash2_width, splash2_height, 1);
+  // }
 
   vccstate = vcs;
 

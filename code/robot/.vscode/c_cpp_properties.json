@@ -13,7 +13,8 @@
         "lib/Wire/**",
         "lib/SPI/**",
         "lib/SD/**",
-        "lib/Adafruit_SSD1306/**"
+        "lib/Adafruit_SSD1306/**",
+        "lib/MPU9250/**"
       ],
       "forcedInclude": [],
       "defines": [
