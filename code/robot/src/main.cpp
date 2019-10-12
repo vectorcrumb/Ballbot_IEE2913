@@ -289,26 +289,28 @@ void loop() {
     imu.sumCount = 0;
     imu.sum = 0;
   }
+  motor1.setSpeed(drive_speed);
+  motor2.setSpeed(drive_speed);
+  motor3.setSpeed(drive_speed);
+  delay(1000);
+  motor1.setSpeed(0);
+  motor2.setSpeed(0);
+  motor3.setSpeed(0);
+  delay(100);
+
+  motor1.setSpeed(-1*drive_speed);
+  motor2.setSpeed(-1*drive_speed);
+  motor3.setSpeed(-1*drive_speed);
+  delay(1000);
+  motor1.setSpeed(0);
+  motor2.setSpeed(0);
+  motor3.setSpeed(0);
+  delay(100);
+  
 }
 
 
-motor1.setSpeed(drive_speed);
-motor2.setSpeed(drive_speed);
-motor3.setSpeed(drive_speed);
-delay(1000);
-motor1.setSpeed(0);
-motor2.setSpeed(0);
-motor3.setSpeed(0);
-delay(100);
 
-motor1.setSpeed(-1*drive_speed);
-motor2.setSpeed(-1*drive_speed);
-motor3.setSpeed(-1*drive_speed);
-delay(1000);
-motor1.setSpeed(0);
-motor2.setSpeed(0);
-motor3.setSpeed(0);
-delay(100);
 
 // Serial.print("Enc1: "); Serial.print(enc1.read()); Serial.print("\t");
 // Serial.print("Enc2: "); Serial.print(enc2.read()); Serial.print("\t");
