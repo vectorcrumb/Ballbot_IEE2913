@@ -7,8 +7,8 @@
 #define LEDG1 5
 #define LEDR2 6
 
-#define ENC1A 17
-#define ENC1B 16
+#define ENC1A 15
+#define ENC1B 14
 #define PWM1 23
 #define INB1 22
 #define INA1 21
@@ -21,7 +21,7 @@
 
 #define ENC3A 37
 #define ENC3B 36
-#define PWM3 30
+#define PWM3 35
 #define INB3 34
 #define INA3 33
 
@@ -184,7 +184,7 @@ void setup() {
 #endif
   // Finished IMU setup. Signal with LEDs.
   Serial.println(F("Finished configuring IMU."));
-  blink_led(50, 5);
+  blink_led(50, 1);
 
   /**
    * Motors (Drivers + Encoders)
@@ -205,7 +205,7 @@ void setup() {
   display.setCursor(28, 24);
   display.println("Finished config!");
   display.display();
-  delay(500);
+  delay(1000);
 }
 
 
@@ -266,10 +266,21 @@ void loop() {
     display.clearDisplay();
     display.setCursor(0, 0);
     display.setTextColor(WHITE);
-    display.println("IMU values:");
-    display.print("Roll: "); display.println(imu.roll, 2);
-    display.print("Pitch: "); display.println(imu.pitch, 2);
-    display.print("Yaw: "); display.println(imu.yaw, 2);
+
+    display.print("RPY:"); display.print(imu.roll, 1);
+    display.print("|"); display.print(imu.pitch, 1);
+    display.print("|"); display.println(imu.yaw, 1);
+
+    display.print("ENC:"); display.print(enc1.read());
+    display.print("|"); display.print(enc2.read());
+    display.print("|"); display.println(enc3.read());
+
+
+
+    // display.println("IMU values:");
+    // display.print("Roll: "); display.println(imu.roll, 2);
+    // display.print("Pitch: "); display.println(imu.pitch, 2);
+    // display.print("Yaw: "); display.println(imu.yaw, 2);
     display.display();
 
     digitalWriteFast(LEDG1, !digitalReadFast(LEDG1));
