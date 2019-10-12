@@ -110,3 +110,6 @@ cad/electrical/SparkFun-Eagle-Libraries-master
 cad/electrical/Teensy356.lbr
 code/sim/linmodel_ert_rtw
 code/sim/slprj
+
+code/robot/.vscode
+code/robot/.vsteensy
