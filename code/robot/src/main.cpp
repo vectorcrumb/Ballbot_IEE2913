@@ -23,7 +23,7 @@
 #define ENC3B 36
 #define PWM3 35
 #define INB3 34
-#define INA3 29
+#define INA3 33
 
 #define IMU_INT 24
 #define SDA_ALT 17
@@ -201,7 +201,7 @@ void setup() {
    */
   motor1.begin(PWM1, INA1, INB1, 1);
   motor2.begin(PWM2, INA2, INB2, 1);
-  motor3.begin(PWM3, INA3, INB3, 2);
+  motor3.begin(PWM3, INA3, INB3, 1);
   Serial.println(F("Motor drivers declared."));
   enc1.write(0);
   enc2.write(0);
@@ -301,20 +301,20 @@ void loop() {
   }
   motor1.setSpeed(drive_speed, 1);
   motor2.setSpeed(drive_speed, 1);
-  motor3.setSpeed(drive_speed, 2);
+  motor3.setSpeed(drive_speed, 1);
   delay(1000);
   motor1.setSpeed(0, 1);
   motor2.setSpeed(0, 1);
-  motor3.setSpeed(0, 2);
+  motor3.setSpeed(0, 1);
   delay(100);
 
   motor1.setSpeed(-1*drive_speed, 1);
   motor2.setSpeed(-1*drive_speed, 1);
-  motor3.setSpeed(-1*drive_speed, 2);
+  motor3.setSpeed(-1*drive_speed, 1);
   delay(1000);
   motor1.setSpeed(0, 1);
   motor2.setSpeed(0, 1);
-  motor3.setSpeed(0, 2);
+  motor3.setSpeed(0, 1);
   delay(100);
   
 }
