@@ -1,4 +1,15 @@
 #include "Arduino.h"
+#include "SPI.h"
+#include "SD.h"
+
+#include "control.h"
+#include "state.h"
+#include "transforms.h"
+
+#ifndef _DATASTRUCTS_
+#define _DATASTRUCTS_
+#include <dataStructs.h>
+#endif
 
 // #define IMU_SERIAL
 
@@ -50,6 +61,20 @@ Encoder enc1(ENC1A, ENC1B);
 Encoder enc2(ENC2A, ENC2B);
 Encoder enc3(ENC3A, ENC3B);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
+
+STATE_DATA deltax;
+STATE_DATA x0;
+STATE_DATA K;
+TORQUES T_virtual;
+TORQUES T_real;
+TORQUES u0;
+VOLTAGES V_torque;
+VOLTAGES V_PWM;
+ANGLES omniangles;
+ANGLES IMUangles;
+MATRIX M_torques;
+MATRIX M_od_IMUangles;
+MATRIX M_od_omniangles;
 
 int drive_speed = 50;
 
@@ -257,7 +282,7 @@ void loop() {
     imu.yaw *= RAD_TO_DEG;
     imu.yaw -= MAGNETIC_DECLINATION;
     imu.roll *= RAD_TO_DEG;
-#ifdef IMU_SERIAL
+  #ifdef IMU_SERIAL
     Serial.print("q0 = ");  Serial.print(*getQ());
     Serial.print(" qx = "); Serial.print(*(getQ() + 1));
     Serial.print(" qy = "); Serial.print(*(getQ() + 2));
@@ -271,7 +296,7 @@ void loop() {
     Serial.print("rate = ");
     Serial.print((float)imu.sumCount / imu.sum, 2);
     Serial.println(" Hz");
-#endif
+  #endif
 
     display.clearDisplay();
     display.setCursor(0, 0);
@@ -299,23 +324,29 @@ void loop() {
     imu.sumCount = 0;
     imu.sum = 0;
   }
-  motor1.setSpeed(drive_speed, 1);
-  motor2.setSpeed(drive_speed, 1);
-  motor3.setSpeed(drive_speed, 1);
-  delay(1000);
-  motor1.setSpeed(0, 1);
-  motor2.setSpeed(0, 1);
-  motor3.setSpeed(0, 1);
-  delay(100);
 
-  motor1.setSpeed(-1*drive_speed, 1);
-  motor2.setSpeed(-1*drive_speed, 1);
-  motor3.setSpeed(-1*drive_speed, 1);
-  delay(1000);
-  motor1.setSpeed(0, 1);
-  motor2.setSpeed(0, 1);
-  motor3.setSpeed(0, 1);
-  delay(100);
+  //Código principal
+
+  //Esto probablemente deba ir en una interrupción cuando la RasPi manda que se actualice el estado
+  get_opPoint(*M_torques, *K, *x0, *u0, opPoint_number);
+
+  //-------->Funciones para leer angulos IMU, encoders, que entregan structs para omniangulos y angulos encoder
+
+  //Arma estado deltax
+  //-------->Falta definir deltat, como se ponian punteros bien aca?
+  get_phi(*deltax, x0, M_od_omniangles, M_od_IMUangles, omniangles, IMUangles, deltat);
+  get_theta(*deltax, IMUangles);
+
+  //Se obtiene T_virtual=u0+deltau=-kdeltax+u0
+  control_signal(*T_virtual, K, u0, deltax);
+  torque_conversion(M_torques, *T_real, T_virtual);
+
+  //Voltaje de motores, conversión a PWM
+  //--------->Falta función para leer V_battery
+  voltage_motors(*V_torque, T_real, omniangles, deltat);
+  voltage_pwm(V_torque, *V_PWM, V_battery);
+
+
   
 }
 
