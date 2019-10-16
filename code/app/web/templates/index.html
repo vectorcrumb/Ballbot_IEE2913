@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- CSS imports  -->
+    <link rel="stylesheet" href="../static/styles/bootstrap.css">
+    <!-- JS Imports -->
+    <script type='text/javascript' src='../static/scripts/jquery-3.3.1.js'></script>
+    <script type="text/javascript" src="../static/scripts/socket.io.js"></script>
+    <script type='text/javascript' src='../static/scripts/bootstrap.bundle.js'></script>
+    <title>Ballbot UI</title>
+</head> 
+<body>
+    <div class="container-fluid">
+        <div class="row align-items-center">
+            <div class="col-sm-3 text-center">
+                <div>
+                    <canvas id="battery-animation" width="275" height="120"></canvas> 
+                </div>
+            </div>
+            <div class="col-sm-2 text-center">
+                <h3 id="imu_x"></h3>
+            </div>
+            <div class="col-sm-2 text-center">
+                <h3 id="imu_y"></h3>
+            </div>
+            <div class="col-sm-2 text-center">
+                <h3 id="imu_z"></h3>
+            </div>
+            <div class="col-sm-3 text-center">
+                <h3 id="connection_state">Disconnected</h3>
+            </div>
+        </div>
+    </div>
+    <!-- Custom JS script import -->
+    <script type="text/javascript" src="../static/scripts/ballbotui.js" charset="utf-8"></script>
+</body>
+</html>
