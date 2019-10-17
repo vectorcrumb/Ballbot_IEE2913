@@ -1,17 +1,15 @@
 #include "Arduino.h"
-#include "SPI.h"
-#include "SD.h"
 
-#include "control.h"
-#include "state.h"
-#include "transforms.h"
-
-#ifndef _DATASTRUCTS_
-#define _DATASTRUCTS_
-#include <dataStructs.h>
-#endif
 
 // #define IMU_SERIAL
+// #define MAG_CAL
+
+#define MAG_BIAS1 257.82
+#define MAG_BIAS2 274.11
+#define MAG_BIAS3 634.31
+#define MAG_SCALE1 0.79
+#define MAG_SCALE2 1.17
+#define MAG_SCALE3 1.13
 
 #define LED_BOARD 13
 #define LEDR1 2
@@ -48,7 +46,15 @@
 #include <MPU9250.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+
 #include "logo.h"
+#include "SPI.h"
+#include "SD.h"
+#include "control.h"
+#include "state.h"
+#include "transforms.h"
+
+#include "dataStructs.h"
 
 #define MPU9250_ADDRESS MPU9250_ADDRESS_AD0
 #define MAGNETIC_DECLINATION 1.33
@@ -77,6 +83,8 @@ MATRIX M_od_IMUangles;
 MATRIX M_od_omniangles;
 
 int drive_speed = 50;
+unsigned long long start_time = micros();
+bool Thetaz_firstrun = 1;
 
 void blink_led(int period, int repeat) {
   for (int i = 0; i < repeat; i++) {
@@ -206,6 +214,16 @@ void setup() {
   imu.getAres();
   imu.getGres();
   imu.getMres();
+#ifdef MAG_CAL
+  imu.magCalMPU9250(imu.magBias,imu.magScale);
+#else
+  imu.magBias[0] = MAG_BIAS1;
+  imu.magBias[1] = MAG_BIAS2;
+  imu.magBias[2] = MAG_BIAS3;
+  imu.magScale[0] = MAG_SCALE1;
+  imu.magScale[1] = MAG_SCALE2;
+  imu.magScale[2] = MAG_SCALE3;
+#endif
   // More values
 #ifdef IMU_SERIAL
   Serial.println(F("AK8963 mag biases (mG)"));
@@ -241,6 +259,50 @@ void setup() {
   display.println("Finished config!");
   display.display();
   delay(1000);
+
+  uint8_t convergence_iterations = 0;
+
+  while (convergence_iterations < 50){
+    if(imu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
+      imu.readAccelData(imu.accelCount);
+      imu.ax = (float) imu.accelCount[0] * imu.aRes;
+      imu.ay = (float) imu.accelCount[1] * imu.aRes;
+      imu.az = (float) imu.accelCount[2] * imu.aRes;
+      imu.readGyroData(imu.gyroCount);
+      imu.gx = (float) imu.gyroCount[0] * imu.gRes;
+      imu.gy = (float) imu.gyroCount[1] * imu.gRes;
+      imu.gz = (float) imu.gyroCount[2] * imu.gRes;
+      imu.readMagData(imu.magCount);
+      imu.mx = (float) imu.magCount[0] * imu.mRes * imu.factoryMagCalibration[0] - imu.magBias[0];
+      imu.my = (float) imu.magCount[1] * imu.mRes * imu.factoryMagCalibration[1] - imu.magBias[1];
+      imu.mz = (float) imu.magCount[2] * imu.mRes * imu.factoryMagCalibration[2] - imu.magBias[2];
+      imu.updateTime();
+      MahonyQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -1*imu.mz, imu.deltat);
+      convergence_iterations++;
+    }
+    delay(5);
+  }
+  imu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
+                    * *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1)
+                    * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) - *(getQ()+3)
+                    * *(getQ()+3));
+  imu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
+                      * *(getQ()+2)));
+  imu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
+                      * *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1)
+                      * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) + *(getQ()+3)
+                      * *(getQ()+3));
+
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.setTextColor(WHITE);
+  display.println("Iterated 50 readings!");
+  display.print("YAW: "); display.println(imu.yaw);
+  display.print("PITCH: "); display.println(imu.pitch);
+  display.print("ROLL: "); display.println(imu.roll);
+  display.display();
+  delay(2000);
+
 }
 
 
@@ -263,90 +325,95 @@ void loop() {
 
   imu.updateTime();
 
-  MadgwickQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, imu.mz, imu.deltat);
+  //MadgwickQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -1*imu.mz, imu.deltat);
+  // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
+  MahonyQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -1*imu.mz, imu.deltat);
 
-  imu.delt_t = millis() - imu.count;
-  if (imu.delt_t > 500) {
-    imu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
+  imu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
                     * *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1)
                     * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) - *(getQ()+3)
                     * *(getQ()+3));
-    imu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
+  imu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
                       * *(getQ()+2)));
-    imu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
+  imu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
                       * *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1)
                       * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) + *(getQ()+3)
                       * *(getQ()+3));
     
-    imu.pitch *= RAD_TO_DEG;
-    imu.yaw *= RAD_TO_DEG;
-    imu.yaw -= MAGNETIC_DECLINATION;
-    imu.roll *= RAD_TO_DEG;
-  #ifdef IMU_SERIAL
-    Serial.print("q0 = ");  Serial.print(*getQ());
-    Serial.print(" qx = "); Serial.print(*(getQ() + 1));
-    Serial.print(" qy = "); Serial.print(*(getQ() + 2));
-    Serial.print(" qz = "); Serial.println(*(getQ() + 3));
-    Serial.print("Yaw, Pitch, Roll: ");
-    Serial.print(imu.yaw, 2);
-    Serial.print(", ");
-    Serial.print(imu.pitch, 2);
-    Serial.print(", ");
-    Serial.println(imu.roll, 2);
-    Serial.print("rate = ");
-    Serial.print((float)imu.sumCount / imu.sum, 2);
-    Serial.println(" Hz");
-  #endif
-
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.setTextColor(WHITE);
-
-    display.print("RPY:"); display.print(imu.roll, 1);
-    display.print("|"); display.print(imu.pitch, 1);
-    display.print("|"); display.println(imu.yaw, 1);
-
-    display.print("ENC:"); display.print(enc1.read());
-    display.print("|"); display.print(enc2.read());
-    display.print("|"); display.println(enc3.read());
-
-
-
-    // display.println("IMU values:");
-    // display.print("Roll: "); display.println(imu.roll, 2);
-    // display.print("Pitch: "); display.println(imu.pitch, 2);
-    // display.print("Yaw: "); display.println(imu.yaw, 2);
-    display.display();
-
-    digitalWriteFast(LEDG1, !digitalReadFast(LEDG1));
-
-    imu.count = millis();
-    imu.sumCount = 0;
-    imu.sum = 0;
-  }
+  imu.pitch *= RAD_TO_DEG;
+  imu.yaw *= RAD_TO_DEG;
+  imu.yaw -= MAGNETIC_DECLINATION;
+  imu.roll *= RAD_TO_DEG;  
 
   //Código principal
-
+  float deltat = (micros() - start_time);
+  
   //Esto probablemente deba ir en una interrupción cuando la RasPi manda que se actualice el estado
-  get_opPoint(*M_torques, *K, *x0, *u0, opPoint_number);
-
+  get_opPoint(&M_od_omniangles, &M_od_IMUangles, &M_torques, &K, &x0, &u0, 1);
+  
   //-------->Funciones para leer angulos IMU, encoders, que entregan structs para omniangulos y angulos encoder
-
+  read_IMU(&IMUangles, imu, deltat);
+  read_enc(&omniangles, enc1, enc2, enc3, deltat);
+  
   //Arma estado deltax
-  //-------->Falta definir deltat, como se ponian punteros bien aca?
-  get_phi(*deltax, x0, M_od_omniangles, M_od_IMUangles, omniangles, IMUangles, deltat);
-  get_theta(*deltax, IMUangles);
+  get_phi(&deltax, &x0, &M_od_omniangles, &M_od_IMUangles, &omniangles, &IMUangles, deltat);
+  get_theta(&deltax, &IMUangles, &x0, Thetaz_firstrun);
+
+  if (Thetaz_firstrun){
+    Thetaz_firstrun =0;
+  }
+
+  // Serial.println("start");
+  // Serial.print(deltax.phix);
+  // Serial.println("\n");
+  // Serial.print(deltax.phiy);
+  // Serial.println("\n");
+  // Serial.print(deltax.dphix);
+  // Serial.println("\n");
+  // Serial.print(deltax.dphiy);
+  // Serial.println("\n");
+  // Serial.print(deltax.thetax);
+  // Serial.println("\n");
+  // Serial.print(deltax.thetay);
+  // Serial.println("\n");
+  // Serial.print(deltax.thetaz);
+  // Serial.println("\n");
+  // Serial.print(deltax.dthetax);
+  // Serial.println("\n");
+  // Serial.print(deltax.dthetay);
+  // Serial.println("\n");
+  // Serial.print(deltax.dthetaz);
+  // Serial.println("\n");
 
   //Se obtiene T_virtual=u0+deltau=-kdeltax+u0
-  control_signal(*T_virtual, K, u0, deltax);
-  torque_conversion(M_torques, *T_real, T_virtual);
+  control_signal(&T_virtual, &K, &u0, &deltax);
+  torque_conversion(&M_torques, &T_real, &T_virtual);
 
   //Voltaje de motores, conversión a PWM
-  //--------->Falta función para leer V_battery
-  voltage_motors(*V_torque, T_real, omniangles, deltat);
-  voltage_pwm(V_torque, *V_PWM, V_battery);
+  //--------->Falta función para leer V_battery. Reemplazar 12 por V_battery cuando se lea
+  voltage_motors(&V_torque, &T_real, &omniangles, deltat);
+  voltage_pwm(&V_torque,  &V_PWM, 12);
 
+  start_time = micros();
 
+  float PWM_1 = 128*(V_PWM.V1);
+  float PWM_2 = 128*(V_PWM.V1);
+  float PWM_3 = 128*(V_PWM.V1);
+
+  motor1.setSpeed(PWM_1,1);
+  motor2.setSpeed(PWM_2,1);
+  motor3.setSpeed(PWM_3,1);
+
+  // Serial.println(imu.roll);
+  // Serial.println("  ");
+
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.setTextColor(WHITE);
+  display.print("Tx: "); display.println(T_virtual.Tx1);
+  display.print("Ty: "); display.println(T_virtual.Ty2);
+  display.print("Tz"); display.println(T_virtual.Tz3);
+  display.display();
   
 }
 

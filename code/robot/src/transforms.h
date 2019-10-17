@@ -1,8 +1,13 @@
-#ifndef _DATASTRUCTS_
-#define _DATASTRUCTS_
+#ifndef _TRANSFORMS_
+#define _TRANSFORMS_
 #include <dataStructs.h>
+#include <MPU9250.h>
+#include <Encoder.h>
+
+void torque_conversion(MATRIX* M_torques, TORQUES* T_real, TORQUES* T_virtual);
+
+void read_IMU(ANGLES* IMUangles, MPU9250 imu, float deltat);
+
+void read_enc(ANGLES* omniangles, Encoder enc1, Encoder enc2, Encoder enc3, float deltat);
+
 #endif
-
-void torque_conversion(MATRIX M_torques, TORQUES* T_real, TORQUES T_virtual);
-
-void get_opPoint(MATRIX* M_torques, STATE_DATA* K, STATE_DATA* x0, TORQUES* u0, int opPoint_number);

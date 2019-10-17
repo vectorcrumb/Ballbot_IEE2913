@@ -1,4 +1,5 @@
-
+#ifndef _DATASTRUCTS_
+#define _DATASTRUCTS_
 //For K, x0, x, deltax
 typedef struct state_data{
     float phix;
@@ -11,6 +12,7 @@ typedef struct state_data{
     float dthetay;
     float thetaz;
     float dthetaz;
+    float Thetaz_offset;
 } STATE_DATA;
 
 //T_virtual, T_real, deltau, u0
@@ -49,3 +51,5 @@ typedef struct voltages{
     float V2;
     float V3;
 } VOLTAGES;
+
+#endif
