@@ -1,6 +1,11 @@
 #include "state.h"
 #include "Arduino.h"
 
+#define K1 0.0048
+#define K2 8.500
+#define K3 0.1575
+#define K4 3.1767
+
 void get_phi(STATE_DATA* deltax, STATE_DATA* x0, MATRIX* M_od_omniangles, MATRIX* M_od_IMUangles, ANGLES* omniangles, ANGLES* IMUangles, float deltat){
     float dPhix = (M_od_omniangles->m11)*(omniangles->dw1)+(M_od_omniangles->m12)*(omniangles->dw2)+(M_od_omniangles->m13)*(omniangles->dw3)+(M_od_IMUangles->m11)*(IMUangles->dw1)+(M_od_IMUangles->m12)*(IMUangles->dw2)+(M_od_IMUangles->m13)*(IMUangles->dw3);
     float dPhiy = (M_od_omniangles->m21)*(omniangles->dw1)+(M_od_omniangles->m22)*(omniangles->dw2)+(M_od_omniangles->m23)*(omniangles->dw3)+(M_od_IMUangles->m21)*(IMUangles->dw1)+(M_od_IMUangles->m22)*(IMUangles->dw2)+(M_od_IMUangles->m23)*(IMUangles->dw3);
@@ -13,12 +18,12 @@ void get_phi(STATE_DATA* deltax, STATE_DATA* x0, MATRIX* M_od_omniangles, MATRIX
 }
 
 void get_theta(STATE_DATA* deltax, ANGLES* IMUangles, STATE_DATA* x0, bool Thetaz_firstrun){
-    if (Thetaz_firstrun){
-        x0->Thetaz_offset = IMUangles->w3;
-    }
-    deltax->thetax = (IMUangles->w1)-(x0->thetax);
-    deltax->thetay = (IMUangles->w2)-(x0->thetay);
-    deltax->thetaz = (IMUangles->w3)-(x0->thetaz)-(x0->Thetaz_offset);
+    // if (Thetaz_firstrun){
+    //     deltax->Thetaz_offset = IMUangles->w3;
+    // }
+    deltax->thetax = (IMUangles->w1)-(x0->thetax)-(deltax->Thetax_offset);
+    deltax->thetay = (IMUangles->w2)-(x0->thetay)-(deltax->Thetay_offset);
+    deltax->thetaz = (IMUangles->w3)-(x0->thetaz)-(deltax->Thetaz_offset)*0;
     deltax->dthetax = (IMUangles->dw1)-(x0->dthetax);
     deltax->dthetay = (IMUangles->dw2)-(x0->dthetay);
     deltax->dthetaz = (IMUangles->dw3)-(x0->dthetaz);
@@ -27,16 +32,17 @@ void get_theta(STATE_DATA* deltax, ANGLES* IMUangles, STATE_DATA* x0, bool Theta
 void get_opPoint(MATRIX* M_odometry_omniangles, MATRIX* M_odometry_IMUangles, MATRIX* M_torques, STATE_DATA* K, STATE_DATA* x0, TORQUES* u0, int opPoint_number){
     //POR ESCRIBIR
     //leer de SD en base a el punto de operación
-    K->phix=0.3765;
-    K->thetax=9.7798;
-    K->dphix=0.3939;
-    K->dthetax=1.6841;
-    K->phiy=0.3765;
-    K->thetay=9.7798;
-    K->dphiy=0.3939;
-    K->dthetay=1.6841;
+
+    K->phix=K1;
+    K->thetax=K2;
+    K->dphix=K3;
+    K->dthetax=K4;
+    K->phiy=K1;
+    K->thetay=K2;
+    K->dphiy=K3;
+    K->dthetay=K4;
     K->thetaz=4.5175;
-    K->dthetaz=0.9910;
+    K->dthetaz=0.9804;
     M_torques->m11=0.9428;
     M_torques->m12=0;
     M_torques->m13=-0.3333;

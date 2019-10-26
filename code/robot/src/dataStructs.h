@@ -12,6 +12,8 @@ typedef struct state_data{
     float dthetay;
     float thetaz;
     float dthetaz;
+    float Thetax_offset;
+    float Thetay_offset;
     float Thetaz_offset;
 } STATE_DATA;
 

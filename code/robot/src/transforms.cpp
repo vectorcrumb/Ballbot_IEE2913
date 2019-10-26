@@ -16,9 +16,9 @@ void torque_conversion(MATRIX* M_torques, TORQUES* T_real, TORQUES* T_virtual){
 
 void read_IMU(ANGLES* IMUangles, MPU9250 imu, float deltat){
     // NOT NED ANGLES.
-    float ThetaX = imu.pitch*0.01745; 
-    float ThetaY = imu.roll*0.01745;
-    float ThetaZ = 0*imu.yaw*0.01745;
+    float ThetaX = -1*imu.pitch; 
+    float ThetaY = imu.roll;
+    float ThetaZ = imu.yaw*0;
     IMUangles->dw1 = (ThetaX-IMUangles->w1)/deltat*0.000001;
     IMUangles->dw2 = (ThetaY-IMUangles->w2)/deltat*0.000001;
     IMUangles->dw3 = (ThetaZ-IMUangles->w3)/deltat*0.000001;
@@ -32,9 +32,9 @@ void read_enc(ANGLES* omniangles, Encoder enc1, Encoder enc2, Encoder enc3, floa
     float Phi1 = enc1.read()*ENC_TO_ANGLE;
     float Phi2 = enc2.read()*ENC_TO_ANGLE;
     float Phi3 = enc3.read()*ENC_TO_ANGLE;
-    omniangles->dw1 = (Phi1-omniangles->w1)/deltat*0.000001;
-    omniangles->dw2 = (Phi1-omniangles->w2)/deltat*0.000001;
-    omniangles->dw3 = (Phi1-omniangles->w3)/deltat*0.000001;
+    omniangles->dw1 = ((Phi1-omniangles->w1)/deltat)*0.000001;
+    omniangles->dw2 = ((Phi1-omniangles->w2)/deltat)*0.000001;
+    omniangles->dw3 = ((Phi1-omniangles->w3)/deltat)*0.000001;
     omniangles->w1 = Phi1;
     omniangles->w2 = Phi2;
     omniangles->w3 = Phi3;

@@ -84,6 +84,7 @@ MATRIX M_od_omniangles;
 
 int drive_speed = 50;
 unsigned long long start_time = micros();
+unsigned long update_web = millis();
 bool Thetaz_firstrun = 1;
 
 void blink_led(int period, int repeat) {
@@ -119,6 +120,7 @@ void setup() {
   digitalWrite(INA3, LOW);
   // Open serial channel at 115.2 kbps
   Serial.begin(115200);
+  Serial1.begin(115200);
   // Pausing to wait for a Serial channel forces the robot to standby
   // when disconnected from a computer.
   // while(!Serial) {};
@@ -262,7 +264,7 @@ void setup() {
 
   uint8_t convergence_iterations = 0;
 
-  while (convergence_iterations < 50){
+  while (convergence_iterations < 150){
     if(imu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
       imu.readAccelData(imu.accelCount);
       imu.ax = (float) imu.accelCount[0] * imu.aRes;
@@ -303,6 +305,10 @@ void setup() {
   display.display();
   delay(2000);
 
+  deltax.Thetax_offset=imu.pitch;
+  deltax.Thetay_offset=imu.roll;
+  deltax.Thetaz_offset=imu.yaw;
+
 }
 
 
@@ -327,7 +333,7 @@ void loop() {
 
   //MadgwickQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -1*imu.mz, imu.deltat);
   // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
-  MahonyQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -1*imu.mz, imu.deltat);
+  MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
 
   imu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
                     * *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1)
@@ -340,10 +346,10 @@ void loop() {
                       * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) + *(getQ()+3)
                       * *(getQ()+3));
     
-  imu.pitch *= RAD_TO_DEG;
-  imu.yaw *= RAD_TO_DEG;
+  // imu.pitch *= RAD_TO_DEG;
+  // imu.yaw *= RAD_TO_DEG;
   imu.yaw -= MAGNETIC_DECLINATION;
-  imu.roll *= RAD_TO_DEG;  
+  // imu.roll *= RAD_TO_DEG;  
 
   //Código principal
   float deltat = (micros() - start_time);
@@ -392,17 +398,17 @@ void loop() {
   //Voltaje de motores, conversión a PWM
   //--------->Falta función para leer V_battery. Reemplazar 12 por V_battery cuando se lea
   voltage_motors(&V_torque, &T_real, &omniangles, deltat);
-  voltage_pwm(&V_torque,  &V_PWM, 12);
+  voltage_pwm(&V_torque,  &V_PWM, 12.4);
 
   start_time = micros();
 
-  float PWM_1 = 128*(V_PWM.V1);
-  float PWM_2 = 128*(V_PWM.V1);
-  float PWM_3 = 128*(V_PWM.V1);
+  float PWM_1 = 255*(V_PWM.V1);
+  float PWM_2 = 255*(V_PWM.V2);
+  float PWM_3 = 255*(V_PWM.V3);
 
-  motor1.setSpeed(PWM_1,1);
-  motor2.setSpeed(PWM_2,1);
-  motor3.setSpeed(PWM_3,1);
+  motor1.setSpeed(PWM_1, 1);
+  motor2.setSpeed(PWM_2, 1);
+  motor3.setSpeed(PWM_3, 1);
 
   // Serial.println(imu.roll);
   // Serial.println("  ");
@@ -410,11 +416,43 @@ void loop() {
   display.clearDisplay();
   display.setCursor(0, 0);
   display.setTextColor(WHITE);
-  display.print("Tx: "); display.println(T_virtual.Tx1);
-  display.print("Ty: "); display.println(T_virtual.Ty2);
-  display.print("Tz"); display.println(T_virtual.Tz3);
+  // display.print("Thetax: "); display.println(deltax.thetax); 
+  // display.print("Thetay: "); display.println(deltax.thetay); 
+  // display.print("Thetaz: "); display.println(deltax.thetaz); 
+  display.print("TV:"); display.print(T_virtual.Tx1, 2);
+  display.print("|"); display.print(T_virtual.Ty2, 2);
+  display.print("|"); display.println(T_virtual.Tz3, 2);
+
+  display.print("V:"); display.print(V_torque.V1, 2);
+  display.print("|"); display.print(V_torque.V2, 2);
+  display.print("|"); display.print(V_torque.V3, 2);
+
+  display.setCursor(70, 24);
+  display.print("dt:"); display.println(deltat*0.001,2); 
   display.display();
   
+  if (millis() - update_web > 1000) {
+  Serial1.print("U");
+  Serial1.print(imu.pitch,2);
+  Serial1.print(",");
+  Serial1.print(imu.roll,2);
+  Serial1.print(",");
+  Serial1.print(imu.yaw,2);
+  Serial1.print(",");
+  Serial1.print(T_real.Tx1,2);
+  Serial1.print(",");
+  Serial1.print(T_real.Ty2,2);
+  Serial1.print(",");
+  Serial1.print(T_real.Tz3,2);
+  Serial1.print(",");
+  Serial1.print(T_virtual.Tx1,2);
+  Serial1.print(",");
+  Serial1.print(T_virtual.Ty2,2);
+  Serial1.print(",");
+  Serial1.print(T_virtual.Tz3,2);
+  Serial1.println("");
+  update_web = millis();
+  }
 }
 
 

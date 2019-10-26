@@ -3,7 +3,7 @@
 
 void control_signal(TORQUES* T_virtual, STATE_DATA* K, TORQUES* u0, STATE_DATA* deltax){
     float T_x = -(K->phix)*(deltax->phix)-(K->dphix)*(deltax->dphix)-(K->thetax)*(deltax->thetax)-(K->dthetax)*(deltax->dthetax);
-    float T_y = -(K->phiy)*(deltax->phiy)-(K->dphiy)*(deltax->dphiy)-(K->thetay)*(deltax->thetay)-(K->dthetay)*(deltax->dthetay);
+    float T_y = -(-(K->phiy)*(deltax->phiy)-(K->dphiy)*(deltax->dphiy)-(K->thetay)*(deltax->thetay)-(K->dthetay)*(deltax->dthetay));
     float T_z = -(K->thetaz)*(deltax->thetaz)-(K->dthetaz)*(deltax->dthetaz);
     T_virtual->Tx1 = T_x + (u0->Tx1);
     T_virtual->Ty2 = T_y + (u0->Ty2);
@@ -14,22 +14,38 @@ void voltage_motors(VOLTAGES* V, TORQUES* T_real, ANGLES* omniangles, float delt
     float G=0.1653;
     float G_inv=6.0496;
     float R=2.7273;
-    float J=0.0001317;
-    float T1 = T_real->Tx1;
-    float T2 = T_real->Ty2;
-    float T3 = T_real->Tz3;
-    float omega1 = (T_real->Tx1)*0.000001*deltat/J+(omniangles->dw1);
-    float omega2 = (T_real->Ty2)*0.000001*deltat/J+(omniangles->dw2);
-    float omega3 = (T_real->Tz3)*0.000001*deltat/J+(omniangles->dw3);
-    int sg1 = 1; 
-    int sg2 = 1; 
-    int sg3 = 1; 
-    if (T1<0) {T1 *= -1; omega1 *= -1; sg1*= -1;}
-    if (T2<0) {T2 *= -1; omega2 *= -1; sg2*= -1;}
-    if (T3<0) {T3 *= -1; omega3 *= -1; sg3*= -1;}
-    V->V1 = sg1*sqrt(T1*G_inv)*(R+G*omega1);
-    V->V2 = sg2*sqrt(T2*G_inv)*(R+G*omega2);
-    V->V3 = sg3*sqrt(T3*G_inv)*(R+G*omega3);
+
+    float Kt=0.7273;
+    float Ktinv=1.3750;
+    float Ke=0.9231;
+
+    // V->V1 = T_real->Tx1*Ktinv*R + Ke*omniangles->dw1;
+    // V->V2 = T_real->Ty2*Ktinv*R + Ke*omniangles->dw2;
+    // V->V3 = T_real->Tz3*Ktinv*R + Ke*omniangles->dw3;
+
+    V->V1 = sqrt(fabs(T_real->Tx1)*G_inv)*(R + G*omniangles->dw1*((T_real->Tx1 < 0) ? -1 : 1))*((T_real->Tx1 < 0) ? -1 : 1);
+    V->V2 = sqrt(fabs(T_real->Ty2)*G_inv)*(R + G*omniangles->dw2*((T_real->Ty2 < 0) ? -1 : 1))*((T_real->Ty2 < 0) ? -1 : 1);
+    V->V3 = sqrt(fabs(T_real->Tz3)*G_inv)*(R + G*omniangles->dw3*((T_real->Tz3 < 0) ? -1 : 1))*((T_real->Tz3 < 0) ? -1 : 1);
+    //float J=0.0001317;
+    // float T1 = T_real->Tx1;
+    // float T2 = T_real->Ty2;
+    // float T3 = T_real->Tz3;
+    // // float omega1 = (T_real->Tx1)*0.000001*deltat/J+(omniangles->dw1);
+    // // float omega2 = (T_real->Ty2)*0.000001*deltat/J+(omniangles->dw2);
+    // // float omega3 = (T_real->Tz3)*0.000001*deltat/J+(omniangles->dw3);
+    // float omega1 = omniangles->dw1;
+    // float omega2 = omniangles->dw2;
+    // float omega3 = omniangles->dw3;
+
+    // int sg1 = 1;
+    // int sg2 = 1; 
+    // int sg3 = 1; 
+    // if (T1<0) {T1 *= -1; omega1 *= -1; sg1*= -1;}
+    // if (T2<0) {T2 *= -1; omega2 *= -1; sg2*= -1;}
+    // if (T3<0) {T3 *= -1; omega3 *= -1; sg3*= -1;}
+    // V->V1 = sg1*sqrt(T1*G_inv)*(R+G*omega1);
+    // V->V2 = sg2*sqrt(T2*G_inv)*(R+G*omega2);
+    // V->V3 = sg3*sqrt(T3*G_inv)*(R+G*omega3);
 }
 
 void voltage_pwm(VOLTAGES* V, VOLTAGES* PWM, float V_battery){

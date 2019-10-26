@@ -1,6 +1,7 @@
 #ifndef _CONTROL_
 #define _CONTROL_
 #include <dataStructs.h>
+#include <math.h>
 
 void control_signal(TORQUES* T_virtual, STATE_DATA* K, TORQUES* u0, STATE_DATA* deltax);
 
