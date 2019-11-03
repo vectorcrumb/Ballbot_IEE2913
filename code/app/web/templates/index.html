@@ -9,6 +9,7 @@
     <script type='text/javascript' src='../static/scripts/jquery-3.3.1.js'></script>
     <script type="text/javascript" src="../static/scripts/socket.io.js"></script>
     <script type='text/javascript' src='../static/scripts/bootstrap.bundle.js'></script>
+    <script type="text/javascript" src="../static/scripts/plotly.js" charset="utf-8"></script>
     <title>Ballbot UI</title>
 </head> 
 <body>
@@ -19,21 +20,52 @@
                     <canvas id="battery-animation" width="275" height="120"></canvas> 
                 </div>
             </div>
-            <div class="col-sm-2 text-center">
+            <div class="col-sm-1 text-center">
+                <h4>IMU X Angle</h4>
                 <h3 id="imu_x"></h3>
             </div>
-            <div class="col-sm-2 text-center">
+            <div class="col-sm-1 text-center">
+                <h4>IMU Y Angle</h4>
                 <h3 id="imu_y"></h3>
             </div>
-            <div class="col-sm-2 text-center">
+            <div class="col-sm-1 text-center">
+                <h4>IMU Z Angle</h4>
                 <h3 id="imu_z"></h3>
+            </div>
+            <div class="col-sm-3 text-center">
+                <h3>Upload new code</h3>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="file" name="file">
+                    <input type="submit" value="Upload">
+                </form>
             </div>
             <div class="col-sm-3 text-center">
                 <h3 id="connection_state">Disconnected</h3>
             </div>
         </div>
     </div>
+    <div class="container-fluid"> 
+        <div class="row">
+            <div class="col-sm-4 text-center">
+                <div class="row">
+                    <div id="imu_plot"></div>
+                </div>
+            </div>
+            <div class="col-sm-4 text-center">
+                <div class="row">
+                    <div id="vtorq_plot"></div>
+                </div>
+            </div>
+            <div class="col-sm-4 text-center">
+                <div class="row">
+                    <div id="rtorq_plot"></div>
+                </div>
+            </div>
+        </div>
+    </div> 
     <!-- Custom JS script import -->
     <script type="text/javascript" src="../static/scripts/ballbotui.js" charset="utf-8"></script>
+        
+    </script>
 </body>
 </html>

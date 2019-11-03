@@ -113,3 +113,7 @@ code/sim/slprj
 
 code/robot/.vscode
 code/robot/.vsteensy
+code/app/.settings/org.eclipse.buildship.core.prefs
+code/app/.project
+code/robot/Makefile
+code/robot/makefile
