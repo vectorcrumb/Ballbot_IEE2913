@@ -12,7 +12,7 @@ void MahonyQuaternionUpdate(float ax, float ay, float az, float gx, float gy,
 const float * getQ();
 
 const float getQ1();
-const float getQ2()
+const float getQ2();
 const float getQ3();
 const float getQ4();
 

@@ -2,6 +2,7 @@
 # Datatypes (KEYWORD1)
 #######################################
 VNHDriver	KEYWORD1
+TorqueControlledMotor KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)

@@ -1,16 +1,12 @@
 #include "control.h"
-#include <math.h>
 
-void control_signal(TORQUES* T_virtual, STATE_DATA* K, TORQUES* u0, STATE_DATA* deltax){
-    float T_x = -(K->phix)*(deltax->phix)-(K->dphix)*(deltax->dphix)-(K->thetax)*(deltax->thetax)-(K->dthetax)*(deltax->dthetax);
-    float T_y = -(-(K->phiy)*(deltax->phiy)-(K->dphiy)*(deltax->dphiy)-(K->thetay)*(deltax->thetay)-(K->dthetay)*(deltax->dthetay));
-    float T_z = -(K->thetaz)*(deltax->thetaz)-(K->dthetaz)*(deltax->dthetaz);
-    T_virtual->Tx1 = T_x + (u0->Tx1);
-    T_virtual->Ty2 = T_y + (u0->Ty2);
-    T_virtual->Tz3 = T_z + (u0->Tz3);
+void control_signal(Torque * T_virtual, State * K, Torque * u0, State * deltax){
+    T_virtual->Tx1 = u0->Tx1 -(K->phix * deltax->phix + K->dphix * deltax->dphix + K->thetax * deltax->thetax + K->dthetax * deltax->dthetax);
+    T_virtual->Ty2 = u0->Ty2 -(K->phiy * deltax->phiy + K->dphiy * deltax->dphiy + K->thetay * deltax->thetay + K->dthetay * deltax->dthetay);
+    T_virtual->Tz3 = u0->Tz3 -(K->thetaz * deltax->thetaz + K->dthetaz * deltax->dthetaz);
 }
 
-void voltage_motors(VOLTAGES* V, TORQUES* T_real, ANGLES* omniangles, float deltat){
+void voltage_motors(MotorSignal * V, Torque * T_real, AngleState * omniangles, float deltat){
     float G=0.1653;
     float G_inv=6.0496;
     float R=2.7273;
@@ -48,7 +44,7 @@ void voltage_motors(VOLTAGES* V, TORQUES* T_real, ANGLES* omniangles, float delt
     // V->V3 = sg3*sqrt(T3*G_inv)*(R+G*omega3);
 }
 
-void voltage_pwm(VOLTAGES* V, VOLTAGES* PWM, float V_battery){
+void voltage_pwm(MotorSignal * V, MotorSignal * PWM, float V_battery){
     PWM->V1 = (V->V1)/V_battery;
     PWM->V2 = (V->V2)/V_battery;
     PWM->V3 = (V->V3)/V_battery;
