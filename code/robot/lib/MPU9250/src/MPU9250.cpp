@@ -291,7 +291,7 @@ void MPU9250::initMPU9250()
    * Setting INT_PIN_CFG enables a 50us pulse on the INT pin. Based on 
    * https://github.com/bolderflight/MPU9250/blob/master/src/MPU9250.cpp#L359
    */
-  writeByte(_I2Caddr, INT_PIN_CFG, 0x00);
+  writeByte(_I2Caddr, INT_PIN_CFG, 0x02);
   // Enable data ready (bit 0) interrupt
   writeByte(_I2Caddr, INT_ENABLE, 0x01);
   delay(100);
