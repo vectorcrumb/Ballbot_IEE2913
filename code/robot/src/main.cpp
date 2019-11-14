@@ -55,7 +55,7 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
-#include <VNHDriver.h>
+#include <TorqueMotor.h>
 #include <Encoder.h>
 #include <quaternionFilters.h>
 #include <MPU9250.h>
@@ -79,9 +79,9 @@ void quaternionToDegrees();
 
 // Object definitions
 MPU9250 imu(MPU9250_ADDRESS, Wire2, 400000);
-TorqueMotor motor1;
-TorqueMotor motor2;
-TorqueMotor motor3;
+TorqueMotor motor1(PWM1, INA1, INB1, CS1, MOTOR_KT);
+TorqueMotor motor2(PWM2, INA2, INB2, CS2, MOTOR_KT);
+TorqueMotor motor3(PWM3, INA3, INB3, CS3, MOTOR_KT);
 Encoder enc1(ENC1A, ENC1B);
 Encoder enc2(ENC2A, ENC2B);
 Encoder enc3(ENC3A, ENC3B);
@@ -218,9 +218,9 @@ void setup() {
   /**
    * Motors (Drivers + Encoders)
    */
-  motor1.begin(PWM1, INA1, INB1, CS1, MOTOR_KT);
-  motor2.begin(PWM2, INA2, INB2, CS2, MOTOR_KT);
-  motor3.begin(PWM3, INA3, INB3, CS3, MOTOR_KT);
+  motor1.begin();
+  motor2.begin();
+  motor3.begin();
   Serial.println(F("Motor drivers configured."));
   enc1.write(0);
   enc2.write(0);

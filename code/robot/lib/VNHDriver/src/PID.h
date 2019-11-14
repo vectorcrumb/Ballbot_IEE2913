@@ -2,6 +2,7 @@
 #define _PID_H_
 
 
+// Extracted from https://gist.github.com/bradley219/5373998
 class PIDImpl;
 
 class PID {
