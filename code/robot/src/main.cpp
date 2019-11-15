@@ -174,7 +174,7 @@ void setup() {
   Serial.println(F("MPU9250 initialized..."));
   // Verify MPU9250 embedded magnetometer for sanity.
   int8_t imu_mag_whoami = imu.readByte(AK8963_ADDRESS, WHO_AM_I_AK8963);
-  Serial.print(F("AK8963 reported WHO_AM_I 0x")); Serial.print(imu_mag_whoami, HEX);
+  Serial.print(F("AK8963 reported WHO_AM_I 0x")); Serial.println(imu_mag_whoami, HEX);
   if (imu_mag_whoami == 0x48) {
     Serial.println(F("AK8963 is online..."));
   } else {
@@ -205,11 +205,15 @@ void setup() {
   imu.magScale[1] = MAG_SCALE2;
   imu.magScale[2] = MAG_SCALE3;
 #endif
+  Serial.println(F("Configuring IMU interrupt"));
   // Configure IMU INT pin and setup interrupt function
   pinMode(IMU_INT, INPUT);
   attachInterrupt(IMU_INT, updateInterruptIMU, RISING);
   // Wait for IMU to finish calibrating and convert quaternion
-  while (imu_calibrating);
+  Serial.println(F("Calibrating IMU!"));
+  while (imu_calibrating) {
+    delay(2);
+  }
   quaternionToDegrees();
   // Finished IMU setup. Signal with LEDs.
   Serial.println(F("Finished configuring IMU."));
@@ -227,9 +231,9 @@ void setup() {
   enc3.write(0);
   Serial.println(F("Encoders homed."));
   // Enable interrupts for updating motor PID controllers
-  TeensyDelay::begin();
-  TeensyDelay::addDelayChannel(motorPIDCallback, MOTOR_PID_TIMER_CHANNEL);
-  TeensyDelay::trigger(MOTOR_CONTROLLER_REFRESH_RATE, MOTOR_PID_TIMER_CHANNEL);
+  // TeensyDelay::begin();
+  // TeensyDelay::addDelayChannel(motorPIDCallback, MOTOR_PID_TIMER_CHANNEL);
+  // TeensyDelay::trigger(MOTOR_CONTROLLER_REFRESH_RATE, MOTOR_PID_TIMER_CHANNEL);
   Serial.println(F("Finished configuring motors."));
   blink_led(50, 1);
 
@@ -242,7 +246,7 @@ void setup() {
 
   set_theta_offset(&deltax, imu.pitch, imu.roll, imu.yaw);
   ready_display();
-  display.print("Iterated "); display.print(IMU_CALIBRATIONS); display.println(" IMU readings.");
+  display.print(IMU_CALIBRATIONS); display.println(" IMU readings.");
   display.print("YAW: "); display.println(imu.yaw * RAD_TO_DEG);
   display.print("PITCH: "); display.println(imu.pitch * RAD_TO_DEG);
   display.print("ROLL: "); display.println(imu.roll * RAD_TO_DEG);
@@ -255,6 +259,7 @@ void setup() {
 void loop() {
   // Begin by calculating time delta for derivatives
   dt = millis() - loop_time_marker;
+  loop_time_marker = millis();
   // Convert the IMU quaternion state to radians to prepare for use
   quaternionToDegrees();  
   // Get operation point parameters for current operation point
@@ -275,10 +280,14 @@ void loop() {
   motor1.setTorque(T_real.Tx1);
   motor2.setTorque(T_real.Ty2);
   motor3.setTorque(T_real.Tz3);
+  // Update PID controllers
+  motor1.updateMotor(dt);
+  motor2.updateMotor(dt);
+  motor3.updateMotor(dt);
   // Display time delta on screen
   ready_display();
   display.setCursor(70, 24);
-  display.print("dt:"); display.println(dt * 0.001, 2); 
+  display.print("dt:"); display.println(dt); 
   display.display();
   // Update user interface. TO-DO convert to PJON protocol
   if (millis() - update_web > 1000) {
@@ -304,7 +313,7 @@ void loop() {
     update_web = millis();
   }
 
-  loop_time_marker = millis();
+  
 }
 
 
@@ -313,7 +322,7 @@ void loop() {
  * Callback for updating motor PID controllers
  */
 void motorPIDCallback() {
-  TeensyDelay::trigger(MOTOR_CONTROLLER_REFRESH_RATE, MOTOR_PID_TIMER_CHANNEL);
+  // TeensyDelay::trigger(MOTOR_CONTROLLER_REFRESH_RATE, MOTOR_PID_TIMER_CHANNEL);
   // Naively set PID delta_t to the timer callback rate
   motor1.updateMotor(MOTOR_CONTROLLER_REFRESH_RATE);
   motor2.updateMotor(MOTOR_CONTROLLER_REFRESH_RATE);
@@ -361,8 +370,7 @@ void raise_error(const char* error_message) {
 
 void updateInterruptIMU() {
   if (imu_calibrating) {
-    imu_calibration_count++;
-    imu_calibrating = imu_calibration_count >= IMU_CALIBRATIONS ? false : true;
+    imu_calibrating = ++imu_calibration_count >= IMU_CALIBRATIONS ? false : true;
   }
   imu.readAccelData(imu.accelCount);
   imu.ax = (float) imu.accelCount[0] * imu.aRes;
