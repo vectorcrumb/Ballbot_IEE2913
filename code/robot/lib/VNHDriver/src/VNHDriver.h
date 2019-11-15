@@ -5,7 +5,7 @@
 #include <inttypes.h>
 
 
-#define MOTOR_PWM_FREQUENCY 20000
+#define MOTOR_PWM_FREQUENCY 10000
 
 
 class VNHDriver {

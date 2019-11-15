@@ -30,13 +30,13 @@ void read_IMU(AngleState * imu_angles, float pitch, float roll, float yaw, uint3
     imu_angles->w2 = IMU_Y_MOD * roll;
     imu_angles->w3 = IMU_Z_MOD * yaw;
 
-    Serial.print("imu_dt: "); Serial.println(deltat);
-    Serial.print("imu_w1: "); Serial.println(imu_angles->w1);
-    Serial.print("imu_w2: "); Serial.println(imu_angles->w2);
-    Serial.print("imu_w3: "); Serial.println(imu_angles->w3);
-    Serial.print("imu_dw1: "); Serial.println(imu_angles->dw1);
-    Serial.print("imu_dw2: "); Serial.println(imu_angles->dw2);
-    Serial.print("imu_dw3: "); Serial.println(imu_angles->dw3);
+    // Serial.print("imu_dt: "); Serial.println(deltat);
+    // Serial.print("imu_w1: "); Serial.println(imu_angles->w1);
+    // Serial.print("imu_w2: "); Serial.println(imu_angles->w2);
+    // Serial.print("imu_w3: "); Serial.println(imu_angles->w3);
+    // Serial.print("imu_dw1: "); Serial.println(imu_angles->dw1);
+    // Serial.print("imu_dw2: "); Serial.println(imu_angles->dw2);
+    // Serial.print("imu_dw3: "); Serial.println(imu_angles->dw3);
 }
 
 /**
@@ -57,11 +57,11 @@ void read_enc(AngleState * omniangles, int32_t enc1_count, int32_t enc2_count, i
     omniangles->w2 = enc2_count * ENC_TO_ANGLE;
     omniangles->w3 = enc3_count * ENC_TO_ANGLE;
 
-    Serial.print("omni_dt: "); Serial.println(deltat);
-    Serial.print("omni_w1: ");  Serial.println(omniangles->w1);
-    Serial.print("omni_w2: ");  Serial.println(omniangles->w2);
-    Serial.print("omni_w3: ");  Serial.println(omniangles->w3);
-    Serial.print("omni_dw1: "); Serial.println(omniangles->dw1);
-    Serial.print("omni_dw2: "); Serial.println(omniangles->dw2);
-    Serial.print("omni_dw3: "); Serial.println(omniangles->dw3);
+    // Serial.print("omni_dt: "); Serial.println(deltat);
+    // Serial.print("omni_w1: ");  Serial.println(omniangles->w1);
+    // Serial.print("omni_w2: ");  Serial.println(omniangles->w2);
+    // Serial.print("omni_w3: ");  Serial.println(omniangles->w3);
+    // Serial.print("omni_dw1: "); Serial.println(omniangles->dw1);
+    // Serial.print("omni_dw2: "); Serial.println(omniangles->dw2);
+    // Serial.print("omni_dw3: "); Serial.println(omniangles->dw3);
 }

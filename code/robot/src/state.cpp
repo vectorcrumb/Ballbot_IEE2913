@@ -19,8 +19,8 @@ void get_phi(State * deltax, State * x0,
     deltax->phix  = Phix  - x0->phix;
     deltax->phiy  = Phiy  - x0->phiy;
     
-    Serial.print(F("AAAAAAAHHHHHHHHH Omni DW1: ")); Serial.println(omniangles->dw1);
-    Serial.print(F("AAAAAAAHHHHHHHHH IMU DW1: ")); Serial.println(IMUangles->dw1);
+    // Serial.print(F("AAAAAAAHHHHHHHHH Omni DW1: ")); Serial.println(omniangles->dw1);
+    // Serial.print(F("AAAAAAAHHHHHHHHH IMU DW1: ")); Serial.println(IMUangles->dw1);
 }
 
 

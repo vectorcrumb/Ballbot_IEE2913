@@ -48,7 +48,8 @@
 #define IMU_CALIBRATIONS 100
 #define MOTOR_CONTROLLER_REFRESH_RATE 0.020
 #define MOTOR_PID_TIMER_CHANNEL 0
-#define MOTOR_KT 0.7273
+//MOTOR_K=5/1023 * K*Kt/ R
+#define MOTOR_KT 0.0267
 #define SERIAL_SPEED 115200
 #define ENCODER_OPTIMIZE_INTERRUPTS
 // Library imports
@@ -277,47 +278,51 @@ void loop() {
   torque_conversion(&M_torques, &T_real, &T_virtual);
   // Feed real torques to PID controllers for motors. A timer updates the controller, this only sets 
   // the torque setpoint. TO-DO Implement a mutex when updating/reading reference to avoid race conditions
-  motor1.setTorque(T_real.Tx1);
-  motor2.setTorque(T_real.Ty2);
-  motor3.setTorque(T_real.Tz3);
+  // motor1.setTorque(T_real.Tx1);
+  // motor2.setTorque(T_real.Ty2);
+  // motor3.setTorque(T_real.Tz3);
+  motor1.setTorque(2.5);
+  motor2.setTorque(2.5);
+  motor3.setTorque(2.5);
   // Update PID controllers
   motor1.updateMotor(dt);
   motor2.updateMotor(dt);
   motor3.updateMotor(dt);
   // Display time delta on screen
-  ready_display();
-  display.print("M1:"); display.print(motor1.output);
-  display.print(";M2:"); display.print(motor2.output);
-  display.print(";M3:"); display.println(motor3.output);
 
-  display.print("E1:"); display.print(enc1.read());
-  display.print(";E2:"); display.print(enc2.read());
-  display.print(";E3:"); display.println(enc3.read());
-
-  display.print("dt:"); display.println(dt); 
-  display.display();
   // Update user interface. TO-DO convert to PJON protocol
-  if (millis() - update_web > 1000) {
-    Serial1.print("U");
-    Serial1.print(imu.pitch,2);
-    Serial1.print(",");
-    Serial1.print(imu.roll,2);
-    Serial1.print(",");
-    Serial1.print(imu.yaw,2);
-    Serial1.print(",");
-    Serial1.print(T_real.Tx1,2);
-    Serial1.print(",");
-    Serial1.print(T_real.Ty2,2);
-    Serial1.print(",");
-    Serial1.print(T_real.Tz3,2);
-    Serial1.print(",");
-    Serial1.print(T_virtual.Tx1,2);
-    Serial1.print(",");
-    Serial1.print(T_virtual.Ty2,2);
-    Serial1.print(",");
-    Serial1.print(T_virtual.Tz3,2);
-    Serial1.println("");
-    update_web = millis();
+  if (millis() - update_web > 100) {
+    ready_display();
+    display.print("E1:"); display.print(motor1.torque_setpoint-motor1.torque_measured);
+    display.print(";E2:"); display.print(motor2.torque_setpoint-motor2.torque_measured);
+    display.print(";E3:"); display.println(motor3.torque_setpoint-motor3.torque_measured);
+
+    // display.print("E1:"); display.print(enc1.read());
+    // display.print(";E2:"); display.print(enc2.read());
+    // display.print(";E3:"); display.println(enc3.read());
+
+    display.print("dt:"); display.println(dt); 
+    display.display();
+    // Serial1.print("U");
+    // Serial1.print(imu.pitch,2);
+    // Serial1.print(",");
+    // Serial1.print(imu.roll,2);
+    // Serial1.print(",");
+    // Serial1.print(imu.yaw,2);
+    // Serial1.print(",");
+    // Serial1.print(T_real.Tx1,2);
+    // Serial1.print(",");
+    // Serial1.print(T_real.Ty2,2);
+    // Serial1.print(",");
+    // Serial1.print(T_real.Tz3,2);
+    // Serial1.print(",");
+    // Serial1.print(T_virtual.Tx1,2);
+    // Serial1.print(",");
+    // Serial1.print(T_virtual.Ty2,2);
+    // Serial1.print(",");
+    // Serial1.print(T_virtual.Tz3,2);
+    // Serial1.println("");
+    // update_web = millis();
   }
 
   dt = millis() - loop_time_marker;

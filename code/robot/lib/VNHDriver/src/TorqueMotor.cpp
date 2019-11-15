@@ -32,7 +32,7 @@ void TorqueMotor::setTorque(float torque) {
  * (in this case, 12 - 0) to obtain a value between -1 and 1. This value scales 255 to control the motor.
  */
 void TorqueMotor::updateMotor(float refresh_rate) {
-    this->torque_measured = this->Kt * analogRead(this->csPin);
-    this->output = this->controller->calculate(this->torque_setpoint, this->torque_measured, refresh_rate);
+    this->torque_measured = this-> Kt * (float)analogRead(this->csPin);
+    this->output += this->controller->calculate(this->torque_setpoint, this->torque_measured, refresh_rate);
     this->motor->setSpeed(255 * this->output / (TORQUE_PID_MAX_U - TORQUE_PID_MIN_U));
 }

@@ -9,10 +9,10 @@
 /**
  * Kp constant approximated as V/e_max = Kp = 12.6/(2.8 - 0) = 4.5
  */
-#define TORQUE_PID_KP 2.2
+#define TORQUE_PID_KP 4.5
 #define TORQUE_PID_KI 0
 #define TORQUE_PID_KD 0
-#define TORQUE_PID_MIN_U -12
+#define TORQUE_PID_MIN_U 0
 #define TORQUE_PID_MAX_U 12
 #define PID_DELTA_TIME 0.020
 
