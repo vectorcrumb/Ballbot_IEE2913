@@ -12,7 +12,7 @@
 #define TORQUE_PID_KP 4.5
 #define TORQUE_PID_KI 0
 #define TORQUE_PID_KD 0
-#define TORQUE_PID_MIN_U 0
+#define TORQUE_PID_MIN_U -12
 #define TORQUE_PID_MAX_U 12
 #define PID_DELTA_TIME 0.020
 
@@ -23,12 +23,12 @@ public:
     void begin();
     void setTorque(float torque);
     void updateMotor(float refresh_rate);
+    float torque_setpoint, torque_measured, output;
 private:
     PID * controller;
     VNHDriver * motor;
     uint8_t pwmPin, inaPin, inbPin, csPin;
     float Kt;
-    float torque_setpoint, torque_measured, output;
 };
 
 #endif

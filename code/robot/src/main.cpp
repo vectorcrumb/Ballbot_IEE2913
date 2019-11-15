@@ -286,7 +286,9 @@ void loop() {
   motor3.updateMotor(dt);
   // Display time delta on screen
   ready_display();
-  display.setCursor(70, 24);
+  display.print("M1 V: "); display.println(motor1.output);
+  display.print("M2 V: "); display.println(motor2.output);
+  display.print("M3 V: "); display.println(motor3.output);
   display.print("dt:"); display.println(dt); 
   display.display();
   // Update user interface. TO-DO convert to PJON protocol
