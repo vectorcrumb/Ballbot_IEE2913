@@ -57,6 +57,9 @@ float PIDImpl::calculate(float ref, float y, float dt) {
     float iOut = _Ki * _int_err;
     float dOut = _Kd * (err - _prev_err) / delta_time;
 
+    Serial.print(F("dt: ")); Serial.println(dt);
+    Serial.print(F("Ref: ")); Serial.println(ref);
+
     Serial.print(F("PID pOut: ")); Serial.println(pOut);
     Serial.print(F("PID iOut: ")); Serial.println(iOut);
     Serial.print(F("PID dOut: ")); Serial.println(dOut);

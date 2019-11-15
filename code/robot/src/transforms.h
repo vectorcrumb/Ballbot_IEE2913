@@ -7,9 +7,9 @@
 
 #define ENC_TO_ANGLE 0.0218166
 #define MAX_TORQUE 2.8
-#define IMU_X_MOD -1
+#define IMU_X_MOD 1
 #define IMU_Y_MOD 1
-#define IMU_Z_MOD 0
+#define IMU_Z_MOD 1
 
 void torque_conversion(Mat33 * M_torques, Torque * T_real, Torque * T_virtual);
 void read_IMU(AngleState * imu_angles, float pitch, float roll, float yaw, uint32_t deltat);

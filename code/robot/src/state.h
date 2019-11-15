@@ -3,6 +3,7 @@
 
 #include <inttypes.h>
 #include "dataStructs.h"
+#include <Arduino.h>
 
 // Defines are for default values
 #define K1 0.0048
@@ -21,7 +22,9 @@ void get_opPoint(Mat33 * M_odometry_omniangles,
                 Mat33 * M_torques, 
                 State * K, 
                 State * x0, 
-                Torque * u0, 
+                Torque * u0,
+                AngleState * imu,
+                AngleState * omni,
                 uint16_t op_idx);
                 
 #endif

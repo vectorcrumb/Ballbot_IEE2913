@@ -102,9 +102,10 @@ Mat33 M_torques;
 Mat33 M_od_IMUangles;
 Mat33 M_od_omniangles;
 
+
 // State variables
 uint64_t loop_time_marker = millis();
-uint32_t dt = 0;
+uint32_t dt = millis();
 unsigned long update_web = millis();
 bool imu_calibrating = true;
 uint16_t imu_calibration_count = 0;
@@ -258,12 +259,11 @@ void setup() {
 
 void loop() {
   // Begin by calculating time delta for derivatives
-  dt = millis() - loop_time_marker;
   loop_time_marker = millis();
   // Convert the IMU quaternion state to radians to prepare for use
   quaternionToDegrees();  
   // Get operation point parameters for current operation point
-  get_opPoint(&M_od_omniangles, &M_od_IMUangles, &M_torques, &K, &x0, &u0, 1);
+  get_opPoint(&M_od_omniangles, &M_od_IMUangles, &M_torques, &K, &x0, &u0, &IMUangles, &omniangles, 1);
   // Read IMU and encoders and differentiate them. The dt parameter is used for numerical differentiation
   read_IMU(&IMUangles, imu.pitch, imu.roll, imu.yaw, dt);
   read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read(), dt);
@@ -286,9 +286,14 @@ void loop() {
   motor3.updateMotor(dt);
   // Display time delta on screen
   ready_display();
-  display.print("M1 V: "); display.println(motor1.output);
-  display.print("M2 V: "); display.println(motor2.output);
-  display.print("M3 V: "); display.println(motor3.output);
+  display.print("M1:"); display.print(motor1.output);
+  display.print(";M2:"); display.print(motor2.output);
+  display.print(";M3:"); display.println(motor3.output);
+
+  display.print("E1:"); display.print(enc1.read());
+  display.print(";E2:"); display.print(enc2.read());
+  display.print(";E3:"); display.println(enc3.read());
+
   display.print("dt:"); display.println(dt); 
   display.display();
   // Update user interface. TO-DO convert to PJON protocol
@@ -315,7 +320,7 @@ void loop() {
     update_web = millis();
   }
 
-  
+  dt = millis() - loop_time_marker;
 }
 
 

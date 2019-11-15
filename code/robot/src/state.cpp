@@ -18,6 +18,9 @@ void get_phi(State * deltax, State * x0,
     deltax->dphiy = dPhiy - x0->dphiy;
     deltax->phix  = Phix  - x0->phix;
     deltax->phiy  = Phiy  - x0->phiy;
+    
+    Serial.print(F("AAAAAAAHHHHHHHHH Omni DW1: ")); Serial.println(omniangles->dw1);
+    Serial.print(F("AAAAAAAHHHHHHHHH IMU DW1: ")); Serial.println(IMUangles->dw1);
 }
 
 
@@ -50,8 +53,10 @@ void get_opPoint(Mat33 * M_odometry_omniangles,
                 Mat33 * M_torques, 
                 State * K, 
                 State * x0, 
-                Torque * u0, 
-                uint16_t op_idx){
+                Torque * u0,
+                AngleState * imu,
+                AngleState * omni,
+                uint16_t op_idx) {
     // LQR Controller vectors
     K->phix=K1;
     K->thetax=K2;
@@ -108,4 +113,18 @@ void get_opPoint(Mat33 * M_odometry_omniangles,
     u0->Tx1=0;
     u0->Ty2=0;
     u0->Tz3=0;
+
+    imu->w1 = 0;
+    imu->w2 = 0;
+    imu->w3 = 0;
+    imu->dw1 = 0;
+    imu->dw2 = 0;
+    imu->dw3 = 0;
+
+    omni->w1 = 0;
+    omni->w2 = 0;
+    omni->w3 = 0;
+    omni->dw1 = 0;
+    omni->dw2 = 0;
+    omni->dw3 = 0;
 }

@@ -3,6 +3,7 @@
 
 #include <math.h>
 #include "dataStructs.h"
+#include <Arduino.h>
 
 void control_signal(Torque * T_virtual, State * K, Torque * u0, State * deltax);
 void voltage_motors(MotorSignal * V, Torque * T_real, AngleState * omniangles, float deltat);

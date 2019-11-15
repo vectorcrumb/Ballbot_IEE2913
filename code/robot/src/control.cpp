@@ -1,6 +1,11 @@
 #include "control.h"
 
 void control_signal(Torque * T_virtual, State * K, Torque * u0, State * deltax){
+    // Serial.print("deltax0"); Serial.println(deltax->phix);
+    // Serial.print("deltax1"); Serial.println(deltax->dphix);
+    // Serial.print("deltax2"); Serial.println(deltax->thetax);
+    // Serial.print("deltax3"); Serial.println(deltax->dthetax);
+
     T_virtual->Tx1 = u0->Tx1 -(K->phix * deltax->phix + K->dphix * deltax->dphix + K->thetax * deltax->thetax + K->dthetax * deltax->dthetax);
     T_virtual->Ty2 = u0->Ty2 -(K->phiy * deltax->phiy + K->dphiy * deltax->dphiy + K->thetay * deltax->thetay + K->dthetay * deltax->dthetay);
     T_virtual->Tz3 = u0->Tz3 -(K->thetaz * deltax->thetaz + K->dthetaz * deltax->dthetaz);
