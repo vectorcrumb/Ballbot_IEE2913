@@ -30,9 +30,9 @@
 
 #define ENC3A 37
 #define ENC3B 36
-#define PWM3 35
-#define INB3 34
-#define INA3 33
+#define PWM3 29
+#define INB3 28
+#define INA3 27
 
 #define IMU_INT 24
 #define SDA_ALT 17
@@ -369,28 +369,6 @@ void loop() {
     Thetaz_firstrun =0;
   }
 
-  // Serial.println("start");
-  // Serial.print(deltax.phix);
-  // Serial.println("\n");
-  // Serial.print(deltax.phiy);
-  // Serial.println("\n");
-  // Serial.print(deltax.dphix);
-  // Serial.println("\n");
-  // Serial.print(deltax.dphiy);
-  // Serial.println("\n");
-  // Serial.print(deltax.thetax);
-  // Serial.println("\n");
-  // Serial.print(deltax.thetay);
-  // Serial.println("\n");
-  // Serial.print(deltax.thetaz);
-  // Serial.println("\n");
-  // Serial.print(deltax.dthetax);
-  // Serial.println("\n");
-  // Serial.print(deltax.dthetay);
-  // Serial.println("\n");
-  // Serial.print(deltax.dthetaz);
-  // Serial.println("\n");
-
   //Se obtiene T_virtual=u0+deltau=-kdeltax+u0
   control_signal(&T_virtual, &K, &u0, &deltax);
   torque_conversion(&M_torques, &T_real, &T_virtual);
@@ -402,23 +380,14 @@ void loop() {
 
   start_time = micros();
 
-  float PWM_1 = 255*(V_PWM.V1);
-  float PWM_2 = 255*(V_PWM.V2);
-  float PWM_3 = 255*(V_PWM.V3);
-
-  motor1.setSpeed(PWM_1, 1);
-  motor2.setSpeed(PWM_2, 1);
-  motor3.setSpeed(PWM_3, 1);
-
-  // Serial.println(imu.roll);
-  // Serial.println("  ");
+  motor1.setSpeed(V_PWM.V1, 1);
+  motor2.setSpeed(V_PWM.V2, 1);
+  motor3.setSpeed(V_PWM.V3, 1);
 
   display.clearDisplay();
   display.setCursor(0, 0);
   display.setTextColor(WHITE);
-  // display.print("Thetax: "); display.println(deltax.thetax); 
-  // display.print("Thetay: "); display.println(deltax.thetay); 
-  // display.print("Thetaz: "); display.println(deltax.thetaz); 
+
   display.print("TV:"); display.print(T_virtual.Tx1, 2);
   display.print("|"); display.print(T_virtual.Ty2, 2);
   display.print("|"); display.println(T_virtual.Tz3, 2);

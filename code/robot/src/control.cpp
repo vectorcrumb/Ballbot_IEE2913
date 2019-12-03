@@ -49,7 +49,7 @@ void voltage_motors(VOLTAGES* V, TORQUES* T_real, ANGLES* omniangles, float delt
 }
 
 void voltage_pwm(VOLTAGES* V, VOLTAGES* PWM, float V_battery){
-    PWM->V1 = (V->V1)/V_battery;
-    PWM->V2 = (V->V2)/V_battery;
-    PWM->V3 = (V->V3)/V_battery;
+    PWM->V1 = 255*(V->V1)/float(V_battery);
+    PWM->V2 = 255*(V->V2)/float(V_battery);
+    PWM->V3 = 255*(V->V3)/float(V_battery);
 }
