@@ -108,6 +108,10 @@ void raise_error(const char* error_message) {
   }
 }
 
+
+void quaternionToDegrees();
+void updateInterruptIMU();
+
 void setup() {
   digitalWrite(PWM1, LOW);
   digitalWrite(INB1, LOW);
@@ -314,42 +318,8 @@ void setup() {
 
 void loop() {
 
-  if(imu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
-    imu.readAccelData(imu.accelCount);
-    imu.ax = (float) imu.accelCount[0] * imu.aRes;
-    imu.ay = (float) imu.accelCount[1] * imu.aRes;
-    imu.az = (float) imu.accelCount[2] * imu.aRes;
-    imu.readGyroData(imu.gyroCount);
-    imu.gx = (float) imu.gyroCount[0] * imu.gRes;
-    imu.gy = (float) imu.gyroCount[1] * imu.gRes;
-    imu.gz = (float) imu.gyroCount[2] * imu.gRes;
-    imu.readMagData(imu.magCount);
-    imu.mx = (float) imu.magCount[0] * imu.mRes * imu.factoryMagCalibration[0] - imu.magBias[0];
-    imu.my = (float) imu.magCount[1] * imu.mRes * imu.factoryMagCalibration[1] - imu.magBias[1];
-    imu.mz = (float) imu.magCount[2] * imu.mRes * imu.factoryMagCalibration[2] - imu.magBias[2];
-  }
-
-  imu.updateTime();
-
-  //MadgwickQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -1*imu.mz, imu.deltat);
-  // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
-  MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
-
-  imu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
-                    * *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1)
-                    * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) - *(getQ()+3)
-                    * *(getQ()+3));
-  imu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
-                      * *(getQ()+2)));
-  imu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
-                      * *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1)
-                      * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) + *(getQ()+3)
-                      * *(getQ()+3));
-    
-  // imu.pitch *= RAD_TO_DEG;
-  // imu.yaw *= RAD_TO_DEG;
-  imu.yaw -= MAGNETIC_DECLINATION;
-  // imu.roll *= RAD_TO_DEG;  
+  updateInterruptIMU();
+  quaternionToDegrees();
 
   //Código principal
   float deltat = (micros() - start_time);
@@ -401,32 +371,66 @@ void loop() {
   display.display();
   
   if (millis() - update_web > 1000) {
-  Serial1.print("U");
-  Serial1.print(imu.pitch,2);
-  Serial1.print(",");
-  Serial1.print(imu.roll,2);
-  Serial1.print(",");
-  Serial1.print(imu.yaw,2);
-  Serial1.print(",");
-  Serial1.print(T_real.Tx1,2);
-  Serial1.print(",");
-  Serial1.print(T_real.Ty2,2);
-  Serial1.print(",");
-  Serial1.print(T_real.Tz3,2);
-  Serial1.print(",");
-  Serial1.print(T_virtual.Tx1,2);
-  Serial1.print(",");
-  Serial1.print(T_virtual.Ty2,2);
-  Serial1.print(",");
-  Serial1.print(T_virtual.Tz3,2);
-  Serial1.println("");
-  update_web = millis();
+    Serial1.print("U");
+    Serial1.print(imu.pitch,2);
+    Serial1.print(",");
+    Serial1.print(imu.roll,2);
+    Serial1.print(",");
+    Serial1.print(imu.yaw,2);
+    Serial1.print(",");
+    Serial1.print(T_real.Tx1,2);
+    Serial1.print(",");
+    Serial1.print(T_real.Ty2,2);
+    Serial1.print(",");
+    Serial1.print(T_real.Tz3,2);
+    Serial1.print(",");
+    Serial1.print(T_virtual.Tx1,2);
+    Serial1.print(",");
+    Serial1.print(T_virtual.Ty2,2);
+    Serial1.print(",");
+    Serial1.print(T_virtual.Tz3,2);
+    Serial1.println("");
+    update_web = millis();
   }
 }
 
 
 
 
-// Serial.print("Enc1: "); Serial.print(enc1.read()); Serial.print("\t");
-// Serial.print("Enc2: "); Serial.print(enc2.read()); Serial.print("\t");
-// Serial.print("Enc3: "); Serial.println(enc3.read());
+void updateInterruptIMU() {
+  if(imu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
+    imu.readAccelData(imu.accelCount);
+    imu.ax = (float) imu.accelCount[0] * imu.aRes;
+    imu.ay = (float) imu.accelCount[1] * imu.aRes;
+    imu.az = (float) imu.accelCount[2] * imu.aRes;
+    imu.readGyroData(imu.gyroCount);
+    imu.gx = (float) imu.gyroCount[0] * imu.gRes;
+    imu.gy = (float) imu.gyroCount[1] * imu.gRes;
+    imu.gz = (float) imu.gyroCount[2] * imu.gRes;
+    imu.readMagData(imu.magCount);
+    imu.mx = (float) imu.magCount[0] * imu.mRes * imu.factoryMagCalibration[0] - imu.magBias[0];
+    imu.my = (float) imu.magCount[1] * imu.mRes * imu.factoryMagCalibration[1] - imu.magBias[1];
+    imu.mz = (float) imu.magCount[2] * imu.mRes * imu.factoryMagCalibration[2] - imu.magBias[2];
+  }
+
+  imu.updateTime();
+
+  //MadgwickQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -1*imu.mz, imu.deltat);
+  // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
+  MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
+}
+
+
+void quaternionToDegrees() {
+  imu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
+                    * *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1)
+                    * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) - *(getQ()+3)
+                    * *(getQ()+3));
+  imu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
+                      * *(getQ()+2)));
+  imu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
+                      * *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1)
+                      * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) + *(getQ()+3)
+                      * *(getQ()+3));
+  imu.yaw -= MAGNETIC_DECLINATION;
+}
