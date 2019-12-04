@@ -349,14 +349,9 @@ void loop() {
   control_signal(&T_virtual, &K, &u0, &deltax);
   torque_conversion(&M_torques, &T_real, &T_virtual);
 
-  //Voltaje de motores, conversión a PWM
-  //--------->Falta función para leer V_battery. Reemplazar 12 por V_battery cuando se lea
-  //voltage_motors(&V_PWM, &T_real, &omniangles, deltat);
-  //voltage_pwm(&V_torque,  &V_PWM, 12.4);
-
   motor1.setTorque(T_real.Tx1);
   motor2.setTorque(T_real.Ty2);
-  motor2.setTorque(T_real.Tz3);
+  motor3.setTorque(T_real.Tz3);
 
   motor1.updateMotor(deltat);
   motor2.updateMotor(deltat);
@@ -372,13 +367,13 @@ void loop() {
   display.setCursor(0, 0);
   display.setTextColor(WHITE);
 
-  display.print("TV:"); display.print(T_virtual.Tx1, 2);
-  display.print("|"); display.print(T_virtual.Ty2, 2);
-  display.print("|"); display.println(T_virtual.Tz3, 2);
+  display.print("T_med:"); display.print(motor1.torque_measured, 2);
+  display.print("|"); display.print(motor2.torque_measured, 2);
+  display.print("|"); display.println(motor3.torque_measured, 2);
 
-  display.print("V:"); display.print(V_torque.V1, 2);
-  display.print("|"); display.print(V_torque.V2, 2);
-  display.print("|"); display.print(V_torque.V3, 2);
+  display.print("Err:"); display.print(1-motor1.torque_measured, 2);
+  display.print("|"); display.print(-1-motor2.torque_measured, 2);
+  display.print("|"); display.print(1-motor3.torque_measured, 2);
 
   display.setCursor(70, 24);
   display.print("dt:"); display.println(deltat*0.001,2); 

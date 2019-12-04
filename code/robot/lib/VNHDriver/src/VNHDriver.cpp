@@ -2,7 +2,7 @@
 #include <VNHDriver.h>
 
 void VNHDriver::begin(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin) {
-    // if (motor_type==1){
+
         this->pwmPin = pwm_pin;
         this->inaPin = ina_pin;
         this->inbPin = inb_pin;
@@ -10,16 +10,6 @@ void VNHDriver::begin(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin) {
         pinMode(this->inbPin, OUTPUT);
         analogWriteFrequency(this->pwmPin, 20000);
         this->setSpeed(0);
-    // }
-    // else if (motor_type==2){
-    //     this->pwmPin = pwm_pin;
-    //     this->inaPin = ina_pin;
-    //     this->inbPin = inb_pin;
-    //     pinMode(this->inbPin, OUTPUT);
-    //     analogWriteFrequency(this->pwmPin, 20000);
-    //     analogWriteFrequency(this->inaPin, 20000);
-    //     this->setSpeed(0, 2);
-    // }
 }
 
 //Driver 2
