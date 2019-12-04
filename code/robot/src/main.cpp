@@ -16,33 +16,41 @@
 #define LEDG1 5
 #define LEDR2 6
 
+// Motor 1 Encoder and H-Bridge pins
 #define ENC1A 15
 #define ENC1B 14
 #define PWM1 23
 #define INB1 22
 #define INA1 21
-
+#define CS1 33
+// Motor 3 Encoder and H-Bridge pins
 #define ENC2A 39
 #define ENC2B 38
 #define PWM2 20
 #define INB2 19
 #define INA2 18
-
+#define CS2 34
+// Motor 3 Encoder and H-Bridge pins
 #define ENC3A 37
 #define ENC3B 36
 #define PWM3 29
 #define INB3 28
 #define INA3 27
+#define CS3 35
 
 #define IMU_INT 24
 #define SDA_ALT 17
 #define SCL_ALT 16
 
 #define ENCODER_OPTIMIZE_INTERRUPTS
+//MOTOR_K=5/1023 * K*Kt/ R
+#define MOTOR_KT 0.0267
+
 #include <Wire.h>
 #include <VNHDriver.h>
 #include <Encoder.h>
 #include <quaternionFilters.h>
+#include <TorqueMotor.h>
 #include <MPU9250.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -62,7 +70,9 @@
 #define SCREEN_HEIGHT 32
 
 MPU9250 imu(MPU9250_ADDRESS, Wire2, 400000);
-VNHDriver motor1, motor2, motor3;
+TorqueMotor motor1(PWM1, INA1, INB1, CS1, MOTOR_KT);
+TorqueMotor motor2(PWM2, INA2, INB2, CS2, MOTOR_KT);
+TorqueMotor motor3(PWM3, INA3, INB3, CS3, MOTOR_KT);
 Encoder enc1(ENC1A, ENC1B);
 Encoder enc2(ENC2A, ENC2B);
 Encoder enc3(ENC3A, ENC3B);
@@ -248,9 +258,9 @@ void setup() {
   /**
    * Motors (Drivers + Encoders)
    */
-  motor1.begin(PWM1, INA1, INB1, 1);
-  motor2.begin(PWM2, INA2, INB2, 1);
-  motor3.begin(PWM3, INA3, INB3, 1);
+  // motor1.begin(PWM1, INA1, INB1);
+  // motor2.begin(PWM2, INA2, INB2);
+  // motor3.begin(PWM3, INA3, INB3);
   Serial.println(F("Motor drivers declared."));
   enc1.write(0);
   enc2.write(0);
@@ -333,11 +343,7 @@ void loop() {
   
   //Arma estado deltax
   get_phi(&deltax, &x0, &M_od_omniangles, &M_od_IMUangles, &omniangles, &IMUangles, deltat);
-  get_theta(&deltax, &IMUangles, &x0, Thetaz_firstrun);
-
-  if (Thetaz_firstrun){
-    Thetaz_firstrun =0;
-  }
+  get_theta(&deltax, &IMUangles, &x0);
 
   //Se obtiene T_virtual=u0+deltau=-kdeltax+u0
   control_signal(&T_virtual, &K, &u0, &deltax);
@@ -345,14 +351,22 @@ void loop() {
 
   //Voltaje de motores, conversión a PWM
   //--------->Falta función para leer V_battery. Reemplazar 12 por V_battery cuando se lea
-  voltage_motors(&V_torque, &T_real, &omniangles, deltat);
-  voltage_pwm(&V_torque,  &V_PWM, 12.4);
+  //voltage_motors(&V_PWM, &T_real, &omniangles, deltat);
+  //voltage_pwm(&V_torque,  &V_PWM, 12.4);
+
+  motor1.setTorque(T_real.Tx1);
+  motor2.setTorque(T_real.Ty2);
+  motor2.setTorque(T_real.Tz3);
+
+  motor1.updateMotor(deltat);
+  motor2.updateMotor(deltat);
+  motor3.updateMotor(deltat);
 
   start_time = micros();
 
-  motor1.setSpeed(V_PWM.V1, 1);
-  motor2.setSpeed(V_PWM.V2, 1);
-  motor3.setSpeed(V_PWM.V3, 1);
+  //motor1.setSpeed(V_PWM.V1, 1);
+  // motor2.setSpeed(V_PWM.V2, 1);
+  // motor3.setSpeed(V_PWM.V3, 1);
 
   display.clearDisplay();
   display.setCursor(0, 0);

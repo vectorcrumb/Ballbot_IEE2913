@@ -17,10 +17,7 @@ void get_phi(STATE_DATA* deltax, STATE_DATA* x0, MATRIX* M_od_omniangles, MATRIX
     deltax->phiy = Phiy-x0->phiy;
 }
 
-void get_theta(STATE_DATA* deltax, ANGLES* IMUangles, STATE_DATA* x0, bool Thetaz_firstrun){
-    // if (Thetaz_firstrun){
-    //     deltax->Thetaz_offset = IMUangles->w3;
-    // }
+void get_theta(STATE_DATA* deltax, ANGLES* IMUangles, STATE_DATA* x0){
     deltax->thetax = (IMUangles->w1)-(x0->thetax)-(deltax->Thetax_offset);
     deltax->thetay = (IMUangles->w2)-(x0->thetay)-(deltax->Thetay_offset);
     deltax->thetaz = (IMUangles->w3)-(x0->thetaz)-(deltax->Thetaz_offset)*0;

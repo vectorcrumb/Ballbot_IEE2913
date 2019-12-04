@@ -34,5 +34,6 @@ void TorqueMotor::setTorque(float torque) {
 void TorqueMotor::updateMotor(float refresh_rate) {
     this->torque_measured = this-> Kt * (float)analogRead(this->csPin);
     this->output += this->controller->calculate(this->torque_setpoint, this->torque_measured, refresh_rate);
-    this->motor->setSpeed(255 * this->output / (TORQUE_PID_MAX_U - TORQUE_PID_MIN_U));
+    int speed = 255 * this->output / 12.0;
+    this->motor->setSpeed(speed);
 }
