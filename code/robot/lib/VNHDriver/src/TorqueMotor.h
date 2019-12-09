@@ -10,7 +10,7 @@
  * Kp constant approximated as V/e_max = Kp = 12.6/(2.8 - 0) = 4.5
  */
 #define TORQUE_PID_KP 1.5
-#define TORQUE_PID_KI 0.4
+#define TORQUE_PID_KI 2
 #define TORQUE_PID_KD 0
 #define TORQUE_PID_MIN_U -6
 #define TORQUE_PID_MAX_U 6
@@ -22,7 +22,7 @@ public:
     ~TorqueMotor();
     void begin();
     void setTorque(float torque);
-    void updateMotor(float refresh_rate);
+    void updateMotor(float refresh_rate, float alpha);
     float torque_setpoint, torque_measured, output;
 private:
     PID * controller;

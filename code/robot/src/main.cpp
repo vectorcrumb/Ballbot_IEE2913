@@ -349,13 +349,13 @@ void loop() {
   control_signal(&T_virtual, &K, &u0, &deltax);
   torque_conversion(&M_torques, &T_real, &T_virtual);
 
-  motor1.setTorque(T_real.Tx1);
-  motor2.setTorque(T_real.Ty2);
-  motor3.setTorque(T_real.Tz3);
+  motor1.setTorque(0.5);
+  motor2.setTorque(-1);
+  motor3.setTorque(1);
 
-  motor1.updateMotor(deltat);
-  motor2.updateMotor(deltat);
-  motor3.updateMotor(deltat);
+  motor1.updateMotor(deltat, omniangles.ddw1);
+  motor2.updateMotor(deltat, omniangles.ddw2);
+  motor3.updateMotor(deltat, omniangles.ddw3);
 
   start_time = micros();
 
@@ -363,42 +363,43 @@ void loop() {
   // motor2.setSpeed(V_PWM.V2, 1);
   // motor3.setSpeed(V_PWM.V3, 1);
 
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.setTextColor(WHITE);
-
-  display.print("T_med:"); display.print(motor1.torque_measured, 2);
-  display.print("|"); display.print(motor2.torque_measured, 2);
-  display.print("|"); display.println(motor3.torque_measured, 2);
-
-  display.print("Err:"); display.print(1-motor1.torque_measured, 2);
-  display.print("|"); display.print(-1-motor2.torque_measured, 2);
-  display.print("|"); display.print(1-motor3.torque_measured, 2);
-
-  display.setCursor(70, 24);
-  display.print("dt:"); display.println(deltat*0.001,2); 
-  display.display();
   
-  if (millis() - update_web > 1000) {
-    Serial1.print("U");
-    Serial1.print(imu.pitch,2);
-    Serial1.print(",");
-    Serial1.print(imu.roll,2);
-    Serial1.print(",");
-    Serial1.print(imu.yaw,2);
-    Serial1.print(",");
-    Serial1.print(T_real.Tx1,2);
-    Serial1.print(",");
-    Serial1.print(T_real.Ty2,2);
-    Serial1.print(",");
-    Serial1.print(T_real.Tz3,2);
-    Serial1.print(",");
-    Serial1.print(T_virtual.Tx1,2);
-    Serial1.print(",");
-    Serial1.print(T_virtual.Ty2,2);
-    Serial1.print(",");
-    Serial1.print(T_virtual.Tz3,2);
-    Serial1.println("");
+  if (millis() - update_web > 300) {
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.setTextColor(WHITE);
+
+    display.print("T_med:"); display.print(motor1.torque_measured, 2);
+    display.print("|"); display.print(motor2.torque_measured, 2);
+    display.print("|"); display.println(motor3.torque_measured, 2);
+
+    display.print("Err:"); display.print(0.5-motor1.torque_measured, 2);
+    display.print("|"); display.print(-1-motor2.torque_measured, 2);
+    display.print("|"); display.print(1-motor3.torque_measured, 2);
+
+    display.setCursor(70, 24);
+    display.print("dt:"); display.println(deltat*0.001,2);
+    display.display();
+
+    // Serial1.print("U");
+    // Serial1.print(imu.pitch,2);
+    // Serial1.print(",");
+    // Serial1.print(imu.roll,2);
+    // Serial1.print(",");
+    // Serial1.print(imu.yaw,2);
+    // Serial1.print(",");
+    // Serial1.print(T_real.Tx1,2);
+    // Serial1.print(",");
+    // Serial1.print(T_real.Ty2,2);
+    // Serial1.print(",");
+    // Serial1.print(T_real.Tz3,2);
+    // Serial1.print(",");
+    // Serial1.print(T_virtual.Tx1,2);
+    // Serial1.print(",");
+    // Serial1.print(T_virtual.Ty2,2);
+    // Serial1.print(",");
+    // Serial1.print(T_virtual.Tz3,2);
+    // Serial1.println("");
     update_web = millis();
   }
 }

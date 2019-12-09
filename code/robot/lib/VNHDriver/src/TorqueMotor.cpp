@@ -31,8 +31,9 @@ void TorqueMotor::setTorque(float torque) {
  * the PID controller returns a control signal in volts, which must then be scaled by the actuator range
  * (in this case, 12 - 0) to obtain a value between -1 and 1. This value scales 255 to control the motor.
  */
-void TorqueMotor::updateMotor(float refresh_rate) {
+void TorqueMotor::updateMotor(float refresh_rate, float alpha) {
     this->torque_measured = this-> Kt * (float)analogRead(this->csPin);
+    this->torque_measured *= alpha > 0 ? 1 : -1;
     this->output = this->controller->calculate(this->torque_setpoint, this->torque_measured, refresh_rate);
     int speed = 255 * this->output / 12.0;
     this->motor->setSpeed(speed);

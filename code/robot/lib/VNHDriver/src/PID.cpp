@@ -46,15 +46,15 @@ float PIDImpl::calculate(float ref, float y) {
 }
 
 float PIDImpl::calculate(float ref, float y, float dt) {
-    float err = ref - y;
+    float err = y - ref;
     float delta_time = dt / 1000000.0;
     _int_err += err * delta_time;
 
-    if (_int_err > 100000) {
-        _int_err = 100000;
-    } else if (_int_err < -100000) {
-        _int_err = -100000;
-    }
+    // if (_int_err > 100000) {
+    //     _int_err = 100000;
+    // } else if (_int_err < -100000) {
+    //     _int_err = -100000;
+    // }
 
     // Serial.print(F("PID err: ")); Serial.println(err);
     // Serial.print(F("PID int_err: ")); Serial.println(_int_err);
