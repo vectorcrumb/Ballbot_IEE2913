@@ -1,5 +1,6 @@
 #include "TorqueMotor.h"
 
+#define Kv 1.09
 
 TorqueMotor::TorqueMotor(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin, uint8_t cs_pin, float kt) {
     this->motor = new VNHDriver();
@@ -31,9 +32,13 @@ void TorqueMotor::setTorque(float torque) {
  * the PID controller returns a control signal in volts, which must then be scaled by the actuator range
  * (in this case, 12 - 0) to obtain a value between -1 and 1. This value scales 255 to control the motor.
  */
-void TorqueMotor::updateMotor(float refresh_rate, float alpha) {
-    this->torque_measured = this-> Kt * (float)analogRead(this->csPin);
-    this->torque_measured *= alpha > 0 ? 1 : -1;
+void TorqueMotor::updateMotor(float refresh_rate, float omega) {
+    this->torque_measured = this-> Kt * (float) analogRead(this->csPin);
+
+    int8_t t_sign = this->output > Kv * omega ? 1 : -1;
+    this->torque_measured *= t_sign;
+
+    //this->torque_measured *= omega > 0 ? 1 : -1;
     this->output = this->controller->calculate(this->torque_setpoint, this->torque_measured, refresh_rate);
     int speed = 255 * this->output / 12.0;
     this->motor->setSpeed(speed);

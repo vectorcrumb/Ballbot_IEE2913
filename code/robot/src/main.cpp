@@ -93,7 +93,7 @@ MATRIX M_od_IMUangles;
 MATRIX M_od_omniangles;
 
 int drive_speed = 50;
-unsigned long long start_time = micros();
+uint32_t start_time = micros();
 unsigned long update_web = millis();
 bool Thetaz_firstrun = 1;
 
@@ -328,36 +328,36 @@ void setup() {
 
 void loop() {
 
-  updateInterruptIMU();
-  quaternionToDegrees();
+  //updateInterruptIMU();
+  //quaternionToDegrees();
 
   //Código principal
-  float deltat = (micros() - start_time);
+  uint32_t deltat = micros() - start_time;
   
   //Esto probablemente deba ir en una interrupción cuando la RasPi manda que se actualice el estado
-  get_opPoint(&M_od_omniangles, &M_od_IMUangles, &M_torques, &K, &x0, &u0, 1);
+  //get_opPoint(&M_od_omniangles, &M_od_IMUangles, &M_torques, &K, &x0, &u0, 1);
   
   //-------->Funciones para leer angulos IMU, encoders, que entregan structs para omniangulos y angulos encoder
-  read_IMU(&IMUangles, imu, deltat);
+  //read_IMU(&IMUangles, imu, deltat);
   read_enc(&omniangles, enc1, enc2, enc3, deltat);
   
   //Arma estado deltax
-  get_phi(&deltax, &x0, &M_od_omniangles, &M_od_IMUangles, &omniangles, &IMUangles, deltat);
-  get_theta(&deltax, &IMUangles, &x0);
+  //get_phi(&deltax, &x0, &M_od_omniangles, &M_od_IMUangles, &omniangles, &IMUangles, deltat);
+  //get_theta(&deltax, &IMUangles, &x0);
 
   //Se obtiene T_virtual=u0+deltau=-kdeltax+u0
-  control_signal(&T_virtual, &K, &u0, &deltax);
-  torque_conversion(&M_torques, &T_real, &T_virtual);
+  //control_signal(&T_virtual, &K, &u0, &deltax);
+  //torque_conversion(&M_torques, &T_real, &T_virtual);
 
-  motor1.setTorque(0.5);
-  motor2.setTorque(-1);
+  motor1.setTorque(1);
+  motor2.setTorque(1);
   motor3.setTorque(1);
 
-  motor1.updateMotor(deltat, omniangles.ddw1);
-  motor2.updateMotor(deltat, omniangles.ddw2);
-  motor3.updateMotor(deltat, omniangles.ddw3);
+  motor1.updateMotor(deltat, omniangles.dw1);
+  motor2.updateMotor(deltat, omniangles.dw2);
+  motor3.updateMotor(deltat, omniangles.dw3);
 
-  start_time = micros();
+  
 
   //motor1.setSpeed(V_PWM.V1, 1);
   // motor2.setSpeed(V_PWM.V2, 1);
@@ -369,16 +369,16 @@ void loop() {
     display.setCursor(0, 0);
     display.setTextColor(WHITE);
 
-    display.print("T_med:"); display.print(motor1.torque_measured, 2);
-    display.print("|"); display.print(motor2.torque_measured, 2);
-    display.print("|"); display.println(motor3.torque_measured, 2);
+    display.print("w:"); display.print(omniangles.dw1, 2);
+    display.print("|"); display.print(omniangles.dw2, 2);
+    display.print("|"); display.println(omniangles.dw3, 2);
 
-    display.print("Err:"); display.print(0.5-motor1.torque_measured, 2);
-    display.print("|"); display.print(-1-motor2.torque_measured, 2);
-    display.print("|"); display.print(1-motor3.torque_measured, 2);
+    display.print("E:"); display.print(1 - motor1.torque_measured, 2);
+    display.print("|"); display.print(1 - motor2.torque_measured, 2);
+    display.print("|"); display.print(1 - motor3.torque_measured, 2);
 
     display.setCursor(70, 24);
-    display.print("dt:"); display.println(deltat*0.001,2);
+    display.print("dt:"); display.println(deltat / 1000000.0, 2);
     display.display();
 
     // Serial1.print("U");
@@ -402,6 +402,8 @@ void loop() {
     // Serial1.println("");
     update_web = millis();
   }
+
+  start_time = micros();
 }
 
 

@@ -46,7 +46,7 @@ float PIDImpl::calculate(float ref, float y) {
 }
 
 float PIDImpl::calculate(float ref, float y, float dt) {
-    float err = y - ref;
+    float err = ref-y;
     float delta_time = dt / 1000000.0;
     _int_err += err * delta_time;
 

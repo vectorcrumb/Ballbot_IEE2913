@@ -22,7 +22,7 @@ public:
     ~TorqueMotor();
     void begin();
     void setTorque(float torque);
-    void updateMotor(float refresh_rate, float alpha);
+    void updateMotor(float refresh_rate, float omega);
     float torque_setpoint, torque_measured, output;
 private:
     PID * controller;
