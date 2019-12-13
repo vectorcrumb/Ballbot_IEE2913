@@ -364,14 +364,14 @@ void loop() {
   // motor3.setSpeed(V_PWM.V3, 1);
 
   
-  if (millis() - update_web > 300) {
+  if (millis() - update_web > 50) {
     display.clearDisplay();
     display.setCursor(0, 0);
     display.setTextColor(WHITE);
 
-    display.print("w:"); display.print(omniangles.dw1, 2);
-    display.print("|"); display.print(omniangles.dw2, 2);
-    display.print("|"); display.println(omniangles.dw3, 2);
+    display.print("w:"); display.print(omniangles.w1);
+    display.print("|"); display.print(omniangles.w2);
+    display.print("|"); display.println(omniangles.w3);
 
     display.print("E:"); display.print(1 - motor1.torque_measured, 2);
     display.print("|"); display.print(1 - motor2.torque_measured, 2);
