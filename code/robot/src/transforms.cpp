@@ -32,9 +32,9 @@ void read_enc(ANGLES* omniangles, Encoder enc1, Encoder enc2, Encoder enc3, uint
     float Phi1 = enc1.read()*ENC_TO_ANGLE;
     float Phi2 = enc2.read()*ENC_TO_ANGLE;
     float Phi3 = enc3.read()*ENC_TO_ANGLE;
-    float Phi1prima = (Phi1 - omniangles->w1) * (1000000.0 / deltat);
-    float Phi2prima = (Phi2 - omniangles->w2) * (1000000.0 / deltat);
-    float Phi3prima = (Phi3 - omniangles->w3) * (1000000.0 / deltat);
+    float Phi1prima = (Phi1 - omniangles->w1) * (1000000.0 / (float)deltat);
+    float Phi2prima = (Phi2 - omniangles->w2) * (1000000.0 / (float)deltat);
+    float Phi3prima = (Phi3 - omniangles->w3) * (1000000.0 / (float)deltat);
     //omniangles->ddw1 = (Phi1prima - omniangles->dw1) * (1000000.0 / deltat);
     //omniangles->ddw2 = (Phi2prima - omniangles->dw2) * (1000000.0 / deltat);
     //omniangles->ddw3 = (Phi3prima - omniangles->dw3) * (1000000.0 / deltat);
