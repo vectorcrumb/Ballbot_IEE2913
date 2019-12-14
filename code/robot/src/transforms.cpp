@@ -1,5 +1,5 @@
 #include "transforms.h"
-#define ENC_TO_ANGLE 0.0218166
+#define TICKS_TO_RAD 0.0218166
 
 
 void torque_conversion(MATRIX* M_torques, TORQUES* T_real, TORQUES* T_virtual){
@@ -19,29 +19,22 @@ void read_IMU(ANGLES* IMUangles, MPU9250 imu, float deltat){
     float ThetaX = -1*imu.pitch; 
     float ThetaY = imu.roll;
     float ThetaZ = imu.yaw*0;
-    IMUangles->dw1 = (ThetaX-IMUangles->w1)/deltat*1000000;
-    IMUangles->dw2 = (ThetaY-IMUangles->w2)/deltat*1000000;
-    IMUangles->dw3 = (ThetaZ-IMUangles->w3)/deltat*1000000;
+    IMUangles->dw1 = (ThetaX-IMUangles->w1)/deltat*1000;
+    IMUangles->dw2 = (ThetaY-IMUangles->w2)/deltat*1000;
+    IMUangles->dw3 = (ThetaZ-IMUangles->w3)/deltat*1000;
     IMUangles->w1 = ThetaX;
     IMUangles->w2 = ThetaY;
     IMUangles->w3 = ThetaZ;
     
 }
 
-void read_enc(ANGLES* omniangles, Encoder enc1, Encoder enc2, Encoder enc3, uint32_t deltat){
-    float Phi1 = enc1.read()*ENC_TO_ANGLE;
-    float Phi2 = enc2.read()*ENC_TO_ANGLE;
-    float Phi3 = enc3.read()*ENC_TO_ANGLE;
-    float Phi1prima = (Phi1 - omniangles->w1) * (1000000.0 / (float)deltat);
-    float Phi2prima = (Phi2 - omniangles->w2) * (1000000.0 / (float)deltat);
-    float Phi3prima = (Phi3 - omniangles->w3) * (1000000.0 / (float)deltat);
-    //omniangles->ddw1 = (Phi1prima - omniangles->dw1) * (1000000.0 / deltat);
-    //omniangles->ddw2 = (Phi2prima - omniangles->dw2) * (1000000.0 / deltat);
-    //omniangles->ddw3 = (Phi3prima - omniangles->dw3) * (1000000.0 / deltat);
-    omniangles->dw1 = Phi1prima;
-    omniangles->dw2 = Phi2prima;
-    omniangles->dw3 = Phi3prima;
-    omniangles->w1 = Phi1;
-    omniangles->w2 = Phi2;
-    omniangles->w3 = Phi3;
+void read_enc(volatile ANGLES* omniangles, int32_t enc1, int32_t enc2, int32_t enc3, uint32_t deltat){
+
+    omniangles->dw1 = ((float)enc1 * TICKS_TO_RAD - omniangles->w1) * 50;
+    omniangles->dw2 = ((float)enc2 * TICKS_TO_RAD - omniangles->w2) * 50;
+    omniangles->dw3 = ((float)enc3 * TICKS_TO_RAD - omniangles->w3) * 50;
+    omniangles->w1 = enc1 * TICKS_TO_RAD;
+    omniangles->w2 = enc2 * TICKS_TO_RAD;
+    omniangles->w3 = enc3 * TICKS_TO_RAD;
+
 }

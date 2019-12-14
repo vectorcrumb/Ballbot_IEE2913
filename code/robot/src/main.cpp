@@ -43,8 +43,8 @@
 #define SCL_ALT 16
 
 #define ENCODER_OPTIMIZE_INTERRUPTS
-//MOTOR_K=5/1023 * K*Kt/ R
-#define MOTOR_KT 0.0267
+// Referirse a pag. 42
+#define MOTOR_KT 0.00475
 
 #include <Wire.h>
 #include <VNHDriver.h>
@@ -54,6 +54,7 @@
 #include <MPU9250.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <TeensyDelay.h>
 
 #include "logo.h"
 #include "SPI.h"
@@ -61,7 +62,6 @@
 #include "control.h"
 #include "state.h"
 #include "transforms.h"
-
 #include "dataStructs.h"
 
 #define MPU9250_ADDRESS MPU9250_ADDRESS_AD0
@@ -86,15 +86,15 @@ TORQUES T_real;
 TORQUES u0;
 VOLTAGES V_torque;
 VOLTAGES V_PWM;
-ANGLES omniangles;
+volatile ANGLES omniangles;
 ANGLES IMUangles;
 MATRIX M_torques;
 MATRIX M_od_IMUangles;
 MATRIX M_od_omniangles;
 
 int drive_speed = 50;
-uint32_t start_time = micros();
-unsigned long update_web = millis();
+uint32_t start_time = 0;
+uint32_t update_web = 0;
 bool Thetaz_firstrun = 1;
 
 void blink_led(int period, int repeat) {
@@ -122,7 +122,23 @@ void raise_error(const char* error_message) {
 void quaternionToDegrees();
 void updateInterruptIMU();
 
+void enc_update() {
+  TeensyDelay::trigger(20000);
+  read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read(), 20);
+}
+
+
 void setup() {
+
+  omniangles.w1 = 0;
+  omniangles.w2 = 0;
+  omniangles.w3 = 0;
+  omniangles.dw1 = 0;
+  omniangles.dw2 = 0;
+  omniangles.dw3 = 0;
+
+  analogWriteResolution(12);
+
   digitalWrite(PWM1, LOW);
   digitalWrite(INB1, LOW);
   digitalWrite(INA1, LOW);
@@ -274,7 +290,7 @@ void setup() {
   display.setCursor(28, 24);
   display.println("Finished config!");
   display.display();
-  delay(1000);
+  delay(100);
 
   uint8_t convergence_iterations = 0;
 
@@ -317,29 +333,38 @@ void setup() {
   display.print("PITCH: "); display.println(imu.pitch);
   display.print("ROLL: "); display.println(imu.roll);
   display.display();
-  delay(2000);
+  delay(100);
 
   deltax.Thetax_offset=imu.pitch;
   deltax.Thetay_offset=imu.roll;
   deltax.Thetaz_offset=imu.yaw;
 
+  TeensyDelay::begin();
+  TeensyDelay::addDelayChannel(enc_update);
+  TeensyDelay::trigger(20000);
+
+  start_time = millis();
+  update_web = millis();
+
 }
 
+uint32_t deltat = 0;
 
 void loop() {
 
   //updateInterruptIMU();
   //quaternionToDegrees();
 
+  start_time = micros();
+
   //Código principal
-  uint32_t deltat = micros() - start_time;
   
   //Esto probablemente deba ir en una interrupción cuando la RasPi manda que se actualice el estado
   //get_opPoint(&M_od_omniangles, &M_od_IMUangles, &M_torques, &K, &x0, &u0, 1);
   
   //-------->Funciones para leer angulos IMU, encoders, que entregan structs para omniangulos y angulos encoder
   //read_IMU(&IMUangles, imu, deltat);
-  read_enc(&omniangles, enc1, enc2, enc3, deltat);
+  // read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read(), deltat);
   
   //Arma estado deltax
   //get_phi(&deltax, &x0, &M_od_omniangles, &M_od_IMUangles, &omniangles, &IMUangles, deltat);
@@ -349,9 +374,9 @@ void loop() {
   //control_signal(&T_virtual, &K, &u0, &deltax);
   //torque_conversion(&M_torques, &T_real, &T_virtual);
 
-  motor1.setTorque(1);
-  motor2.setTorque(1);
-  motor3.setTorque(1);
+  motor1.setTorque(-1);
+  motor2.setTorque(-1);
+  motor3.setTorque(-1);
 
   motor1.updateMotor(deltat, omniangles.dw1);
   motor2.updateMotor(deltat, omniangles.dw2);
@@ -359,54 +384,58 @@ void loop() {
 
   
 
-  //motor1.setSpeed(V_PWM.V1, 1);
+  // motor1.setSpeed(V_PWM.V1, 1);
   // motor2.setSpeed(V_PWM.V2, 1);
   // motor3.setSpeed(V_PWM.V3, 1);
 
   
-  if (millis() - update_web > 50) {
+  if (millis() - update_web > 20) {
     display.clearDisplay();
     display.setCursor(0, 0);
     display.setTextColor(WHITE);
 
-    display.print("w:"); display.print(omniangles.w1);
-    display.print("|"); display.print(omniangles.w2);
-    display.print("|"); display.println(omniangles.w3);
+    // display.print("a:"); display.print(omniangles.w1, 1);
+    // display.print("|");  display.print(omniangles.w2, 1);
+    // display.print("|");  display.println(omniangles.w3, 1);
+    display.print("CS2: "); display.println(motor1.torque_measured);
 
-    display.print("E:"); display.print(1 - motor1.torque_measured, 2);
-    display.print("|"); display.print(1 - motor2.torque_measured, 2);
-    display.print("|"); display.print(1 - motor3.torque_measured, 2);
+    display.print("w:"); display.print(omniangles.dw1, 1);
+    display.print("|");  display.print(omniangles.dw2, 1);
+    display.print("|");  display.println(omniangles.dw3, 1);
 
-    display.setCursor(70, 24);
-    display.print("dt:"); display.println(deltat / 1000000.0, 2);
+    display.print("E:"); display.print(motor1.torque_setpoint - motor1.torque_measured, 1);
+    display.print("|");  display.print(motor2.torque_setpoint - motor2.torque_measured, 1);
+    display.print("|");  display.println(motor3.torque_setpoint - motor3.torque_measured, 1);
+
+    display.setCursor(0, 24);
+    display.print("dt:"); display.println(deltat);
     display.display();
 
-    // Serial1.print("U");
-    // Serial1.print(imu.pitch,2);
-    // Serial1.print(",");
-    // Serial1.print(imu.roll,2);
-    // Serial1.print(",");
-    // Serial1.print(imu.yaw,2);
-    // Serial1.print(",");
-    // Serial1.print(T_real.Tx1,2);
-    // Serial1.print(",");
-    // Serial1.print(T_real.Ty2,2);
-    // Serial1.print(",");
-    // Serial1.print(T_real.Tz3,2);
-    // Serial1.print(",");
-    // Serial1.print(T_virtual.Tx1,2);
-    // Serial1.print(",");
-    // Serial1.print(T_virtual.Ty2,2);
-    // Serial1.print(",");
-    // Serial1.print(T_virtual.Tz3,2);
-    // Serial1.println("");
+    /* Serial1.print("U");
+    Serial1.print(imu.pitch,2);
+    Serial1.print(",");
+    Serial1.print(imu.roll,2);
+    Serial1.print(",");
+    Serial1.print(imu.yaw,2);
+    Serial1.print(",");
+    Serial1.print(T_real.Tx1,2);
+    Serial1.print(",");
+    Serial1.print(T_real.Ty2,2);
+    Serial1.print(",");
+    Serial1.print(T_real.Tz3,2);
+    Serial1.print(",");
+    Serial1.print(T_virtual.Tx1,2);
+    Serial1.print(",");
+    Serial1.print(T_virtual.Ty2,2);
+    Serial1.print(",");
+    Serial1.print(T_virtual.Tz3,2);
+    Serial1.println(""); */
     update_web = millis();
   }
 
-  start_time = micros();
+
+  deltat = micros() - start_time;
 }
-
-
 
 
 void updateInterruptIMU() {

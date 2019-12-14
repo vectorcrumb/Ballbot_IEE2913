@@ -8,6 +8,6 @@ void torque_conversion(MATRIX* M_torques, TORQUES* T_real, TORQUES* T_virtual);
 
 void read_IMU(ANGLES* IMUangles, MPU9250 imu, float deltat);
 
-void read_enc(ANGLES* omniangles, Encoder enc1, Encoder enc2, Encoder enc3, uint32_t deltat);
+void read_enc(volatile ANGLES* omniangles, int32_t enc1, int32_t enc2, int32_t enc3, uint32_t deltat);
 
 #endif
