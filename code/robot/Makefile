@@ -17,11 +17,11 @@ BOARD_ID         := TEENSY35
 
 MCU              := mk64fx512
 
-LIBS_SHARED_BASE := E:\Users\lucas\Documents\Arduino\libraries
-LIBS_SHARED      := 
-
 LIBS_LOCAL_BASE  := lib
 LIBS_LOCAL       := Adafruit_GFX Encoder Wire SPI SD Adafruit_SSD1306 I2Cdev MPU6050 VNHDriver MPU9250 TeensyDelay
+
+LIBS_SHARED_BASE := E:\Users\lucas\Documents\Arduino\libraries
+LIBS_SHARED      := 
 
 CORE_BASE        := core
 GCC_BASE         := E:\Arduino\hardware\tools\arm\bin

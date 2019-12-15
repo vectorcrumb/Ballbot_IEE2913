@@ -1,21 +1,13 @@
 #include "Arduino.h"
 
-
 // #define IMU_SERIAL
 // #define MAG_CAL
 
-#define MAG_BIAS1 257.82
-#define MAG_BIAS2 274.11
-#define MAG_BIAS3 634.31
-#define MAG_SCALE1 0.79
-#define MAG_SCALE2 1.17
-#define MAG_SCALE3 1.13
-
+// LED pins
 #define LED_BOARD 13
 #define LEDR1 2
 #define LEDG1 5
 #define LEDR2 6
-
 // Motor 1 Encoder and H-Bridge pins
 #define ENC1A 15
 #define ENC1B 14
@@ -37,14 +29,12 @@
 #define INB3 28
 #define INA3 27
 #define CS3 35
-
+// Pins for IMU and OLED
 #define IMU_INT 24
 #define SDA_ALT 17
 #define SCL_ALT 16
 
 #define ENCODER_OPTIMIZE_INTERRUPTS
-// Referirse a pag. 42
-#define MOTOR_KT 0.00475
 
 #include <Wire.h>
 #include <VNHDriver.h>
@@ -64,15 +54,30 @@
 #include "transforms.h"
 #include "dataStructs.h"
 
+// Magnetometer bias values
+#define MAG_BIAS1 257.82
+#define MAG_BIAS2 274.11
+#define MAG_BIAS3 634.31
+#define MAG_SCALE1 0.79
+#define MAG_SCALE2 1.17
+#define MAG_SCALE3 1.13
+// IMU Constants
 #define MPU9250_ADDRESS MPU9250_ADDRESS_AD0
 #define MAGNETIC_DECLINATION 1.33
+// OLED Constants
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 32
+// Timer Constants
+#define TIMER_CHANNEL_ENC 0
+#define TIMER_CHANNEL_MOTORS 1
+#define TIMER_DELAY_MOTOR MOTOR_PID_DT_US
+#define TIMER_DELAY_ENC 10000
 
+// IMU, motors, encoders and OLED objects
 MPU9250 imu(MPU9250_ADDRESS, Wire2, 400000);
-TorqueMotor motor1(PWM1, INA1, INB1, CS1, MOTOR_KT);
-TorqueMotor motor2(PWM2, INA2, INB2, CS2, MOTOR_KT);
-TorqueMotor motor3(PWM3, INA3, INB3, CS3, MOTOR_KT);
+TorqueMotor motor1(PWM1, INA1, INB1, CS1);
+TorqueMotor motor2(PWM2, INA2, INB2, CS2);
+TorqueMotor motor3(PWM3, INA3, INB3, CS3);
 Encoder enc1(ENC1A, ENC1B);
 Encoder enc2(ENC2A, ENC2B);
 Encoder enc3(ENC3A, ENC3B);
@@ -121,40 +126,17 @@ void raise_error(const char* error_message) {
 
 void quaternionToDegrees();
 void updateInterruptIMU();
-
-void enc_update() {
-  TeensyDelay::trigger(20000);
-  read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read(), 20);
-}
+void enc_update();
 
 
 void setup() {
-
-  omniangles.w1 = 0;
-  omniangles.w2 = 0;
-  omniangles.w3 = 0;
-  omniangles.dw1 = 0;
-  omniangles.dw2 = 0;
-  omniangles.dw3 = 0;
-
-  analogWriteResolution(12);
-
-  digitalWrite(PWM1, LOW);
-  digitalWrite(INB1, LOW);
-  digitalWrite(INA1, LOW);
-  digitalWrite(PWM2, LOW);
-  digitalWrite(INB2, LOW);
-  digitalWrite(INA2, LOW);
-  digitalWrite(PWM3, LOW);
-  digitalWrite(INB3, LOW);
-  digitalWrite(INA3, LOW);
+  /**
+   * General Configuration
+   */
   // Open serial channel at 115.2 kbps
   Serial.begin(115200);
   Serial1.begin(115200);
-  // Pausing to wait for a Serial channel forces the robot to standby
-  // when disconnected from a computer.
-  // while(!Serial) {};
-  Serial.println(F("Brought up serial interface. Initializing..."));
+  Serial.println(F("Brought up serial interfaces. Initializing..."));
   // Initialize I2C_2 for IMU
   Wire2.begin();
   // Initialize I2C_0 for OLED
@@ -166,17 +148,12 @@ void setup() {
   pinMode(LEDG1, OUTPUT);
   pinMode(LEDR1, OUTPUT);
   pinMode(LEDR2, OUTPUT); 
-
   digitalWriteFast(LED_BOARD, LOW);
   digitalWriteFast(LEDR1, LOW);
   digitalWriteFast(LEDR2, LOW);
   digitalWriteFast(LEDG1, LOW);
-  // Configure other digital pins
-  pinMode(IMU_INT, INPUT);
-  digitalWrite(IMU_INT, LOW);
   // Flash onboard led
   delay(1);
-  blink_led(50, 2);
 
   /**
    * OLED Configuration
@@ -201,20 +178,6 @@ void setup() {
     Serial.println(F("MPU9250 is online..."));
     // Start by performing self test and reporting values
     imu.MPU9250SelfTest(imu.selfTest);
-#ifdef IMU_SERIAL
-    Serial.print(F("x-axis self test: acceleration trim within : "));
-    Serial.print(imu.selfTest[0],1); Serial.println("% of factory value");
-    Serial.print(F("y-axis self test: acceleration trim within : "));
-    Serial.print(imu.selfTest[1],1); Serial.println("% of factory value");
-    Serial.print(F("z-axis self test: acceleration trim within : "));
-    Serial.print(imu.selfTest[2],1); Serial.println("% of factory value");
-    Serial.print(F("x-axis self test: gyration trim within : "));
-    Serial.print(imu.selfTest[3],1); Serial.println("% of factory value");
-    Serial.print(F("y-axis self test: gyration trim within : "));
-    Serial.print(imu.selfTest[4],1); Serial.println("% of factory value");
-    Serial.print(F("z-axis self test: gyration trim within : "));
-    Serial.print(imu.selfTest[5],1); Serial.println("% of factory value");
-#endif
     // Calibrate gyro and accelerometers, load biases in bias registers
     imu.calibrateMPU9250(imu.gyroBias, imu.accelBias);
   } else {
@@ -233,15 +196,6 @@ void setup() {
   }  
   imu.initAK8963(imu.factoryMagCalibration);
   Serial.println(F("AK8963 initialized..."));
-  // Display calibration values
-#ifdef IMU_SERIAL
-  Serial.print(F("X-Axis factory sensitivity adjustment value "));
-  Serial.println(imu.factoryMagCalibration[0], 2);
-  Serial.print(F("Y-Axis factory sensitivity adjustment value "));
-  Serial.println(imu.factoryMagCalibration[1], 2);
-  Serial.print(F("Z-Axis factory sensitivity adjustment value "));
-  Serial.println(imu.factoryMagCalibration[2], 2);
-#endif
   // Obtain sensor resolutions
   imu.getAres();
   imu.getGres();
@@ -256,35 +210,18 @@ void setup() {
   imu.magScale[1] = MAG_SCALE2;
   imu.magScale[2] = MAG_SCALE3;
 #endif
-  // More values
-#ifdef IMU_SERIAL
-  Serial.println(F("AK8963 mag biases (mG)"));
-  Serial.println(imu.magBias[0]);
-  Serial.println(imu.magBias[1]);
-  Serial.println(imu.magBias[2]);
-  Serial.println(F("AK8963 mag scale (mG)"));
-  Serial.println(imu.magScale[0]);
-  Serial.println(imu.magScale[1]);
-  Serial.println(imu.magScale[2]);
-#endif
   // Finished IMU setup. Signal with LEDs.
   Serial.println(F("Finished configuring IMU."));
-  blink_led(50, 1);
 
   /**
-   * Motors (Drivers + Encoders)
+   * Encoders configuration
    */
-  // motor1.begin(PWM1, INA1, INB1);
-  // motor2.begin(PWM2, INA2, INB2);
-  // motor3.begin(PWM3, INA3, INB3);
-  Serial.println(F("Motor drivers declared."));
   enc1.write(0);
   enc2.write(0);
   enc3.write(0);
   Serial.println(F("Encoders homed."));
-  Serial.println(F("Finished configuring motors."));
-  blink_led(50, 1);
 
+  // Alert end of startup
   display.fillRect(24, 24, 104, 8, 1);
   display.setTextColor(BLACK);
   display.setCursor(28, 24);
@@ -314,16 +251,7 @@ void setup() {
     }
     delay(5);
   }
-  imu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
-                    * *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1)
-                    * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) - *(getQ()+3)
-                    * *(getQ()+3));
-  imu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
-                      * *(getQ()+2)));
-  imu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
-                      * *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1)
-                      * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) + *(getQ()+3)
-                      * *(getQ()+3));
+  quaternionToDegrees();
 
   display.clearDisplay();
   display.setCursor(0, 0);
@@ -340,10 +268,12 @@ void setup() {
   deltax.Thetaz_offset=imu.yaw;
 
   TeensyDelay::begin();
-  TeensyDelay::addDelayChannel(enc_update);
-  TeensyDelay::trigger(20000);
+  TeensyDelay::addDelayChannel(enc_update, TIMER_CHANNEL_ENC);
+  TeensyDelay::trigger(TIMER_DELAY_ENC, TIMER_CHANNEL_ENC);
+  TeensyDelay::addDelayChannel(motor_update, TIMER_CHANNEL_MOTORS);
+  TeensyDelay::trigger(TIMER_DELAY_MOTOR, TIMER_CHANNEL_MOTORS)
 
-  start_time = millis();
+  start_time = micros();
   update_web = millis();
 
 }
@@ -375,12 +305,10 @@ void loop() {
   //torque_conversion(&M_torques, &T_real, &T_virtual);
 
   motor1.setTorque(-1);
-  motor2.setTorque(-1);
+  motor2.setTorque(3.5);
   motor3.setTorque(-1);
 
-  motor1.updateMotor(deltat, omniangles.dw1);
-  motor2.updateMotor(deltat, omniangles.dw2);
-  motor3.updateMotor(deltat, omniangles.dw3);
+  
 
   
 
@@ -393,11 +321,7 @@ void loop() {
     display.clearDisplay();
     display.setCursor(0, 0);
     display.setTextColor(WHITE);
-
-    // display.print("a:"); display.print(omniangles.w1, 1);
-    // display.print("|");  display.print(omniangles.w2, 1);
-    // display.print("|");  display.println(omniangles.w3, 1);
-    display.print("CS2: "); display.println(motor1.torque_measured);
+    display.print("CS2: "); display.println(motor2.torque_measured);
 
     display.print("w:"); display.print(omniangles.dw1, 1);
     display.print("|");  display.print(omniangles.dw2, 1);
@@ -411,30 +335,24 @@ void loop() {
     display.print("dt:"); display.println(deltat);
     display.display();
 
-    /* Serial1.print("U");
-    Serial1.print(imu.pitch,2);
-    Serial1.print(",");
-    Serial1.print(imu.roll,2);
-    Serial1.print(",");
-    Serial1.print(imu.yaw,2);
-    Serial1.print(",");
-    Serial1.print(T_real.Tx1,2);
-    Serial1.print(",");
-    Serial1.print(T_real.Ty2,2);
-    Serial1.print(",");
-    Serial1.print(T_real.Tz3,2);
-    Serial1.print(",");
-    Serial1.print(T_virtual.Tx1,2);
-    Serial1.print(",");
-    Serial1.print(T_virtual.Ty2,2);
-    Serial1.print(",");
-    Serial1.print(T_virtual.Tz3,2);
-    Serial1.println(""); */
     update_web = millis();
   }
 
 
   deltat = micros() - start_time;
+}
+
+
+void enc_update() {
+  TeensyDelay::trigger(TIMER_DELAY_ENC, TIMER_CHANNEL_ENC);
+  read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read(), 20);
+}
+
+void motor_update() {
+  TeensyDelay::trigger(TIMER_DELAY_MOTOR, TIMER_CHANNEL_MOTORS);
+  motor1.updateMotor();
+  motor2.updateMotor();
+  motor3.updateMotor();
 }
 
 

@@ -1,34 +1,59 @@
 #ifndef _TORQUE_MOTOR_H_
 #define _TORQUE_MOTOR_H_
 
-#include <inttypes.h>
-#include "PID.h"
 #include "VNHDriver.h"
 
+// #define TIME_CONVERSION_MS 1000
+// #define TIME_CONVERSION_US 1000000
+// #define TIME_FACTOR TIME_CONVERSION_US
+#define MOTOR_PID_DT 0.020
+#define MOTOR_PID_DT_US 20000
+#define MOTOR_PID_DT_INV 50
+#define MOTOR_ADC_RESOLUTION 10
+#define MOTOR_ADC_BITS 1024
+#define MOTOR_KT 0.72
+/** 
+ * This value is used to stretch the input range from a small value to the whole ADC range.
+ * For a 5V/5A current sensor, the readings are optimized for a +/- 925mV range around the
+ * 0A center point (VCC/2 = 2.5V), because 5A @ 185mV/A gives 0.925V for 5A. The following 
+ * value is calculated as 0.925[V] * 1024[bits] / 5[V], giving ~190 ADC bits for the full 
+ * 5A range, swinging around the 512 bits center range. Values read by the ADC are optimized 
+ * for the [322.56, 701.44] range, however values outside this range may still be read, 
+ * albeit with nonlinearities in the readings. 
+ * 
+ * Substracting the center point from the reading gives values in the [-190, 190] range, 
+ * indicating current with sign. The torque PID controller is interested in the torque
+ * value read from the current sensor, so the reading should be normalized and later scaled
+ * by the corresponding torque for a 5A reading, given by the EM law tau = Kt * I_a.
+ */
+#define MOTOR_SENSOR_BITS_RANGE 189.44
+#define MOTOR_TORQUE_AT_AMP_LIMIT 3.6
+// TORQUE_AT_AMP_LIMIT / SENSOR_BITS_RANGE
+#define MOTOR_CURRENT_TO_TORQUE_FACTOR 0.019
 
 /**
- * Kp constant approximated as V/e_max = Kp = 12.6/(2.8 - 0) = 4.5
+ * Kp constant approximated as DC/e_max = Kp = 1.0/(2.8 - 0) = 0.357
  */
-#define TORQUE_PID_KP 1.5
-#define TORQUE_PID_KI 2
-#define TORQUE_PID_KD 0
-#define TORQUE_PID_MIN_U -6
-#define TORQUE_PID_MAX_U 6
-#define PID_DELTA_TIME 0.020
+#define MOTOR_PID_KP 0.357
+#define MOTOR_PID_KI 0.05
+#define MOTOR_PID_MIN_U -12
+#define MOTOR_PID_MAX_U 12
 
 class TorqueMotor {
 public:
-    TorqueMotor(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin, uint8_t cs_pin, float kt);
+    TorqueMotor(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin, uint8_t cs_pin);
     ~TorqueMotor();
-    void begin();
     void setTorque(float torque);
-    void updateMotor(float refresh_rate, float omega);
-    float torque_setpoint, torque_measured, output;
+    void updateMotor();
+    float calculatePID(float setpoint, float measurement);
+    uint16_t getCurrent();
+    float getTorque();
+    float torque_setpoint = 0, torque_measured = 0, output = 0;
+    float err = 0, err_int = 0;
+    float Kp = MOTOR_PID_KP, Ki = MOTOR_PID_KI;
 private:
-    PID * controller;
     VNHDriver * motor;
     uint8_t pwmPin, inaPin, inbPin, csPin;
-    float Kt;
 };
 
 #endif

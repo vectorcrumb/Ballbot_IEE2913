@@ -30,9 +30,9 @@ void read_IMU(ANGLES* IMUangles, MPU9250 imu, float deltat){
 
 void read_enc(volatile ANGLES* omniangles, int32_t enc1, int32_t enc2, int32_t enc3, uint32_t deltat){
 
-    omniangles->dw1 = ((float)enc1 * TICKS_TO_RAD - omniangles->w1) * 50;
-    omniangles->dw2 = ((float)enc2 * TICKS_TO_RAD - omniangles->w2) * 50;
-    omniangles->dw3 = ((float)enc3 * TICKS_TO_RAD - omniangles->w3) * 50;
+    omniangles->dw1 = ((float)enc1 * TICKS_TO_RAD - omniangles->w1) * 100;
+    omniangles->dw2 = ((float)enc2 * TICKS_TO_RAD - omniangles->w2) * 100;
+    omniangles->dw3 = ((float)enc3 * TICKS_TO_RAD - omniangles->w3) * 100;
     omniangles->w1 = enc1 * TICKS_TO_RAD;
     omniangles->w2 = enc2 * TICKS_TO_RAD;
     omniangles->w3 = enc3 * TICKS_TO_RAD;
