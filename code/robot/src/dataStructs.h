@@ -45,6 +45,10 @@ typedef struct angles{
     float dw1 = 0;
     float dw2 = 0;
     float dw3 = 0;
+    float past_speeds1[5] = {0,0,0,0,0};
+    float past_speeds2[5] = {0,0,0,0,0};
+    float past_speeds3[5] = {0,0,0,0,0};
+    int indice = 0;
 } ANGLES;
 
 //Voltages for each motor, PWM

@@ -29,12 +29,15 @@ void read_IMU(ANGLES* IMUangles, MPU9250 imu, float deltat){
 }
 
 void read_enc(volatile ANGLES* omniangles, int32_t enc1, int32_t enc2, int32_t enc3, uint32_t deltat){
-
-    omniangles->dw1 = ((float)enc1 * TICKS_TO_RAD - omniangles->w1) * 100;
-    omniangles->dw2 = ((float)enc2 * TICKS_TO_RAD - omniangles->w2) * 100;
-    omniangles->dw3 = ((float)enc3 * TICKS_TO_RAD - omniangles->w3) * 100;
+    omniangles->past_speeds1[omniangles->indice]=((float)enc1 * TICKS_TO_RAD - omniangles->w1) * 100;
+    omniangles->past_speeds2[omniangles->indice]=((float)enc2 * TICKS_TO_RAD - omniangles->w2) * 100;
+    omniangles->past_speeds3[omniangles->indice]=((float)enc3 * TICKS_TO_RAD - omniangles->w3) * 100;
+    omniangles->indice++;
+    if (omniangles->indice>4) omniangles->indice=0;
+    omniangles->dw1 = (omniangles->past_speeds1[0]+omniangles->past_speeds1[1]+omniangles->past_speeds1[2]+omniangles->past_speeds1[3]+omniangles->past_speeds1[4])*0.2;
+    omniangles->dw2 = (omniangles->past_speeds2[0]+omniangles->past_speeds2[1]+omniangles->past_speeds2[2]+omniangles->past_speeds2[3]+omniangles->past_speeds2[4])*0.2;
+    omniangles->dw3 = (omniangles->past_speeds3[0]+omniangles->past_speeds3[1]+omniangles->past_speeds3[2]+omniangles->past_speeds3[3]+omniangles->past_speeds3[4])*0.2;
     omniangles->w1 = enc1 * TICKS_TO_RAD;
     omniangles->w2 = enc2 * TICKS_TO_RAD;
     omniangles->w3 = enc3 * TICKS_TO_RAD;
-
 }
