@@ -55,7 +55,8 @@ float TorqueMotor::calculatePID(float setpoint, float measurement) {
  * (in this case, 12 - 0) to obtain a value between -1 and 1. This value scales 255 to control the motor.
  */
 void TorqueMotor::updateMotor(int16_t analog_reading) {
-    this->analog_measurement = analog_reading + this->zeroPointCurrent;
+    // this->analog_measurement = analog_reading + this->zeroPointCurrent;
+    this->analog_measurement = analog_reading;
     this->torque_measured = this->getTorque();
     this->output = this->calculatePID(this->torque_setpoint, this->torque_measured);
     this->motor->setSpeed(this->output);

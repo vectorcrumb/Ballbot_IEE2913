@@ -1,4 +1,3 @@
-
 #ifndef _LowPassFilter_hpp_
 #define _LowPassFilter_hpp_
 

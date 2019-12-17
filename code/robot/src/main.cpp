@@ -1,3 +1,7 @@
+/**
+ * Escrito por Lucas Alvarez y el Pelma Garrido
+ */
+
 #include "Arduino.h"
 
 // #define IMU_SERIAL
@@ -46,6 +50,7 @@
 #include <Adafruit_SSD1306.h>
 #include <TeensyDelay.h>
 #include <ADC.h>
+#include <Eigen.h>
 
 #include "logo.h"
 #include "SPI.h"
@@ -54,6 +59,7 @@
 #include "state.h"
 #include "transforms.h"
 #include "dataStructs.h"
+#include "movavg.h"
 
 // Magnetometer bias values
 #define MAG_BIAS1 257.82
@@ -73,6 +79,7 @@
 #define TIMER_CHANNEL_MOTORS 1
 #define TIMER_DELAY_MOTOR MOTOR_PID_DT_US
 #define TIMER_DELAY_ENC 10000
+#define TIMER_DELAY_ENC_HZ 100
 #define ADC_CALIBRATION_SAMPLES 100
 
 // IMU, motors, encoders and OLED objects
@@ -85,6 +92,8 @@ Encoder enc2(ENC2A, ENC2B);
 Encoder enc3(ENC3A, ENC3B);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
 ADC * adc = new ADC();
+MovingAverageFilter omegaFilter1, omegaFilter2, omegaFilter3;
+
 
 STATE_DATA deltax;
 STATE_DATA x0;
@@ -133,6 +142,12 @@ void enc_update();
 void motor_update();
 
 void setup() {
+
+  Eigen::MatrixXf Pp(2,2);
+
+  Pp << 1, 2,
+        3, 4;
+
   /**
    * General Configuration
    */
@@ -167,16 +182,21 @@ void setup() {
   uint32_t m1_adc_offset = 0;
   uint32_t m2_adc_offset = 0;
   uint32_t m3_adc_offset = 0;
-  for (int i = 0; i < ADC_CALIBRATION_SAMPLES; i++) {
-    m1_adc_offset += adc->analogRead(motor1.csPin, ADC_0);
-    m2_adc_offset += adc->analogRead(motor2.csPin, ADC_0);
-    m3_adc_offset += adc->analogRead(motor3.csPin, ADC_1);
-    delay(1);
+  for (int i = 0; i <= ADC_CALIBRATION_SAMPLES; i++) {
+    m1_adc_offset += adc->analogRead(motor1.csPin);
+    m2_adc_offset += adc->analogRead(motor2.csPin);
+    m3_adc_offset += adc->analogRead(motor3.csPin);
+    delay(2);
   }
-  motor1.zeroPointCurrent = 2048 - (float) m1_adc_offset / ADC_CALIBRATION_SAMPLES;
-  motor1.zeroPointCurrent = 2048 - (float) m2_adc_offset / ADC_CALIBRATION_SAMPLES;
-  motor1.zeroPointCurrent = 2048 - (float) m3_adc_offset / ADC_CALIBRATION_SAMPLES;
+  // motor1.zeroPointCurrent = 2048 - (float) m1_adc_offset / ADC_CALIBRATION_SAMPLES;
+  // motor2.zeroPointCurrent = 2048 - (float) m2_adc_offset / ADC_CALIBRATION_SAMPLES;
+  // motor3.zeroPointCurrent = 2048 - (float) m3_adc_offset / ADC_CALIBRATION_SAMPLES;
   delay(1);
+
+  Serial.print("ZPC1: "); Serial.println(motor1.zeroPointCurrent);
+  Serial.print("ZPC2: "); Serial.println(motor2.zeroPointCurrent);
+  Serial.print("ZPC3: "); Serial.println(motor3.zeroPointCurrent);
+
 
   /**
    * OLED Configuration
@@ -327,8 +347,8 @@ void loop() {
   //control_signal(&T_virtual, &K, &u0, &deltax);
   //torque_conversion(&M_torques, &T_real, &T_virtual);
 
-  motor1.setTorque(1);
-  motor2.setTorque(3.5);
+  motor1.setTorque(-2);
+  motor2.setTorque(1);
   motor3.setTorque(1);
 
   if (millis() - update_web > 20) {
@@ -338,9 +358,9 @@ void loop() {
     display.setCursor(0, 0);
     display.setTextColor(WHITE);
 
-    display.print("i1: "); display.print(motor1.getCurrent(), 2); display.print("|e1: "); display.println(motor1.getError(), 2);
-    display.print("t2: "); display.print(motor2.getTorque(), 2); display.print("|e1: "); display.println(motor2.getError(), 2);
-    display.print("t3: "); display.print(motor3.getTorque(), 2); display.print("|e1: "); display.println(motor3.getError(), 2);
+    display.print("t1: "); display.print(motor1.getTorque(), 2); display.print("|e1: "); display.println(motor1.getError(), 2);
+    display.print("t2: "); display.print(motor2.getTorque(), 2); display.print("|e2: "); display.println(motor2.getError(), 2);
+    display.print("t3: "); display.print(motor3.getTorque(), 2); display.print("|e3: "); display.println(motor3.getError(), 2);
     display.setCursor(0, 24);
     display.print("dt:"); display.println(deltat);
     display.display();
@@ -353,13 +373,16 @@ void loop() {
 void enc_update() {
   TeensyDelay::trigger(TIMER_DELAY_ENC, TIMER_CHANNEL_ENC);
   read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read(), 20);
+  omniangles.dw1 = omegaFilter1.updateFilter(omniangles.dw1);
+  omniangles.dw1 = omegaFilter2.updateFilter(omniangles.dw2);
+  omniangles.dw3 = omegaFilter3.updateFilter(omniangles.dw3);
 }
 
 void motor_update() {
   TeensyDelay::trigger(TIMER_DELAY_MOTOR, TIMER_CHANNEL_MOTORS);
-  motor1.updateMotor(adc->analogRead(motor1.csPin, ADC_0));
-  motor2.updateMotor(adc->analogRead(motor2.csPin, ADC_0));
-  motor3.updateMotor(adc->analogRead(motor3.csPin, ADC_1));
+  motor1.updateMotor(adc->analogRead(motor1.csPin));
+  motor2.updateMotor(adc->analogRead(motor2.csPin));
+  motor3.updateMotor(adc->analogRead(motor3.csPin));
 }
 
 
