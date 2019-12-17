@@ -31,29 +31,42 @@
 // TORQUE_AT_AMP_LIMIT / SENSOR_BITS_RANGE
 #define MOTOR_CURRENT_TO_TORQUE_FACTOR 0.019
 
+
+// y = ax+b
+#define CURRENT_A 0.00870988
+#define CURRENT_B -13.5135
+#define TORQUE_A 0.00627111
+#define TORQUE_B -9.72973
+
+
 /**
  * Kp constant approximated as DC/e_max = Kp = 1.0/(2.8 - 0) = 0.357
  */
-#define MOTOR_PID_KP 0.357
-#define MOTOR_PID_KI 0.05
-#define MOTOR_PID_MIN_U -12
-#define MOTOR_PID_MAX_U 12
+#define MOTOR_PID_KP 0.3
+#define MOTOR_PID_KI 2.5
+#define MOTOR_PID_MIN_U -1
+#define MOTOR_PID_MAX_U 1
+#define MOTOR_PID_MAX_INT 0.5
 
 class TorqueMotor {
 public:
     TorqueMotor(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin, uint8_t cs_pin);
     ~TorqueMotor();
     void setTorque(float torque);
-    void updateMotor();
+    void updateMotor(int16_t analog_reading);
     float calculatePID(float setpoint, float measurement);
-    uint16_t getCurrent();
+    float getCurrent();
     float getTorque();
+    float getError();
     float torque_setpoint = 0, torque_measured = 0, output = 0;
     float err = 0, err_int = 0;
     float Kp = MOTOR_PID_KP, Ki = MOTOR_PID_KI;
+    int16_t analog_measurement = 0;
+    uint8_t csPin;
+    float zeroPointCurrent = 0;
 private:
     VNHDriver * motor;
-    uint8_t pwmPin, inaPin, inbPin, csPin;
+    uint8_t pwmPin, inaPin, inbPin;
 };
 
 #endif

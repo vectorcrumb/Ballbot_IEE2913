@@ -29,7 +29,7 @@ uint8_t VNHDriver::setSpeed(float speed) {
     }
     // Set absolute value * 255 to PWM pin
     float abs_speed = fabsf(speed);
-    uint8_t pwm_dc = abs_speed >= IN_LIMIT ? PWM_LIMIT : ((uint8_t) PWM_LIMIT * abs_speed);
+    uint8_t pwm_dc = abs_speed >= IN_LIMIT ? PWM_LIMIT : (uint8_t) (PWM_LIMIT * abs_speed);
     analogWrite(this->pwmPin, pwm_dc);
     return pwm_dc;
 }

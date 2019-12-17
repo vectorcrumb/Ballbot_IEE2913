@@ -7,7 +7,7 @@ TorqueMotor::TorqueMotor(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin, uint
     this->motor->begin(pwm_pin, ina_pin, inb_pin);
     this->setTorque(0);
     // Current sensor pin
-    this->csPin = cs_pin;
+    this->csPin = cs_pin;    
 }
 
 TorqueMotor::~TorqueMotor() {
@@ -18,18 +18,24 @@ void TorqueMotor::setTorque(float torque) {
     this->torque_setpoint = torque;
 }
 
-uint16_t TorqueMotor::getCurrent() {
-    return analogRead(this->csPin);
+float TorqueMotor::getCurrent() {
+    return this->analog_measurement * CURRENT_A + CURRENT_B;
 }
 
 float TorqueMotor::getTorque() {
-    // float torque = TORQUE_AT_AMP_LIMIT * ((float) this->getCurrent() - (ADC_BITS >> 1)) / SENSOR_BITS_RANGE;
-    return MOTOR_CURRENT_TO_TORQUE_FACTOR * ((float) this->getCurrent() - (MOTOR_ADC_BITS >> 1));
+    return this->analog_measurement * TORQUE_A + TORQUE_B;
+}
+
+float TorqueMotor::getError() {
+    return this->torque_setpoint - this->torque_measured;
 }
 
 float TorqueMotor::calculatePID(float setpoint, float measurement) {
     this->err = setpoint - measurement;
     this->err_int += this->err * MOTOR_PID_DT;
+
+    if (this->err_int > MOTOR_PID_MAX_INT) this->err_int = MOTOR_PID_MAX_INT;
+    if (this->err_int < -1 * MOTOR_PID_MAX_INT) this->err_int = -1 * MOTOR_PID_MAX_INT;
 
     float pOut = this->Kp * this->err;
     float iOut = this->Ki * this->err_int;
@@ -48,7 +54,8 @@ float TorqueMotor::calculatePID(float setpoint, float measurement) {
  * the PID controller returns a control signal in volts, which must then be scaled by the actuator range
  * (in this case, 12 - 0) to obtain a value between -1 and 1. This value scales 255 to control the motor.
  */
-void TorqueMotor::updateMotor() {
+void TorqueMotor::updateMotor(int16_t analog_reading) {
+    this->analog_measurement = analog_reading + this->zeroPointCurrent;
     this->torque_measured = this->getTorque();
     this->output = this->calculatePID(this->torque_setpoint, this->torque_measured);
     this->motor->setSpeed(this->output);

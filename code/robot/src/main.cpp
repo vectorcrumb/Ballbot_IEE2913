@@ -45,6 +45,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <TeensyDelay.h>
+#include <ADC.h>
 
 #include "logo.h"
 #include "SPI.h"
@@ -72,6 +73,7 @@
 #define TIMER_CHANNEL_MOTORS 1
 #define TIMER_DELAY_MOTOR MOTOR_PID_DT_US
 #define TIMER_DELAY_ENC 10000
+#define ADC_CALIBRATION_SAMPLES 100
 
 // IMU, motors, encoders and OLED objects
 MPU9250 imu(MPU9250_ADDRESS, Wire2, 400000);
@@ -82,6 +84,7 @@ Encoder enc1(ENC1A, ENC1B);
 Encoder enc2(ENC2A, ENC2B);
 Encoder enc3(ENC3A, ENC3B);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
+ADC * adc = new ADC();
 
 STATE_DATA deltax;
 STATE_DATA x0;
@@ -127,7 +130,7 @@ void raise_error(const char* error_message) {
 void quaternionToDegrees();
 void updateInterruptIMU();
 void enc_update();
-
+void motor_update();
 
 void setup() {
   /**
@@ -152,7 +155,27 @@ void setup() {
   digitalWriteFast(LEDR1, LOW);
   digitalWriteFast(LEDR2, LOW);
   digitalWriteFast(LEDG1, LOW);
-  // Flash onboard led
+  // Configure ADC object 
+  adc->setReference(ADC_REFERENCE::REF_3V3, ADC_0);
+  adc->setAveraging(32, ADC_0);
+  adc->setResolution(12, ADC_0);
+  adc->setReference(ADC_REFERENCE::REF_3V3, ADC_1);
+  adc->setAveraging(32, ADC_1);
+  adc->setResolution(12, ADC_1);
+
+  // Calibrate sensor offset
+  uint32_t m1_adc_offset = 0;
+  uint32_t m2_adc_offset = 0;
+  uint32_t m3_adc_offset = 0;
+  for (int i = 0; i < ADC_CALIBRATION_SAMPLES; i++) {
+    m1_adc_offset += adc->analogRead(motor1.csPin, ADC_0);
+    m2_adc_offset += adc->analogRead(motor2.csPin, ADC_0);
+    m3_adc_offset += adc->analogRead(motor3.csPin, ADC_1);
+    delay(1);
+  }
+  motor1.zeroPointCurrent = 2048 - (float) m1_adc_offset / ADC_CALIBRATION_SAMPLES;
+  motor1.zeroPointCurrent = 2048 - (float) m2_adc_offset / ADC_CALIBRATION_SAMPLES;
+  motor1.zeroPointCurrent = 2048 - (float) m3_adc_offset / ADC_CALIBRATION_SAMPLES;
   delay(1);
 
   /**
@@ -271,7 +294,7 @@ void setup() {
   TeensyDelay::addDelayChannel(enc_update, TIMER_CHANNEL_ENC);
   TeensyDelay::trigger(TIMER_DELAY_ENC, TIMER_CHANNEL_ENC);
   TeensyDelay::addDelayChannel(motor_update, TIMER_CHANNEL_MOTORS);
-  TeensyDelay::trigger(TIMER_DELAY_MOTOR, TIMER_CHANNEL_MOTORS)
+  TeensyDelay::trigger(TIMER_DELAY_MOTOR, TIMER_CHANNEL_MOTORS);
 
   start_time = micros();
   update_web = millis();
@@ -304,40 +327,24 @@ void loop() {
   //control_signal(&T_virtual, &K, &u0, &deltax);
   //torque_conversion(&M_torques, &T_real, &T_virtual);
 
-  motor1.setTorque(-1);
+  motor1.setTorque(1);
   motor2.setTorque(3.5);
-  motor3.setTorque(-1);
+  motor3.setTorque(1);
 
-  
-
-  
-
-  // motor1.setSpeed(V_PWM.V1, 1);
-  // motor2.setSpeed(V_PWM.V2, 1);
-  // motor3.setSpeed(V_PWM.V3, 1);
-
-  
   if (millis() - update_web > 20) {
+    update_web = millis();
+
     display.clearDisplay();
     display.setCursor(0, 0);
     display.setTextColor(WHITE);
-    display.print("CS2: "); display.println(motor2.torque_measured);
 
-    display.print("w:"); display.print(omniangles.dw1, 1);
-    display.print("|");  display.print(omniangles.dw2, 1);
-    display.print("|");  display.println(omniangles.dw3, 1);
-
-    display.print("E:"); display.print(motor1.torque_setpoint - motor1.torque_measured, 1);
-    display.print("|");  display.print(motor2.torque_setpoint - motor2.torque_measured, 1);
-    display.print("|");  display.println(motor3.torque_setpoint - motor3.torque_measured, 1);
-
+    display.print("i1: "); display.print(motor1.getCurrent(), 2); display.print("|e1: "); display.println(motor1.getError(), 2);
+    display.print("t2: "); display.print(motor2.getTorque(), 2); display.print("|e1: "); display.println(motor2.getError(), 2);
+    display.print("t3: "); display.print(motor3.getTorque(), 2); display.print("|e1: "); display.println(motor3.getError(), 2);
     display.setCursor(0, 24);
     display.print("dt:"); display.println(deltat);
     display.display();
-
-    update_web = millis();
   }
-
 
   deltat = micros() - start_time;
 }
@@ -350,9 +357,9 @@ void enc_update() {
 
 void motor_update() {
   TeensyDelay::trigger(TIMER_DELAY_MOTOR, TIMER_CHANNEL_MOTORS);
-  motor1.updateMotor();
-  motor2.updateMotor();
-  motor3.updateMotor();
+  motor1.updateMotor(adc->analogRead(motor1.csPin, ADC_0));
+  motor2.updateMotor(adc->analogRead(motor2.csPin, ADC_0));
+  motor3.updateMotor(adc->analogRead(motor3.csPin, ADC_1));
 }
 
 
