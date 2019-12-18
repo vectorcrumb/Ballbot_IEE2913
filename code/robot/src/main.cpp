@@ -70,7 +70,7 @@
 #define MAG_SCALE3 1.13
 // IMU Constants
 #define MPU9250_ADDRESS MPU9250_ADDRESS_AD0
-#define MAGNETIC_DECLINATION 1.33
+#define MAGNETIC_DECLINATION 1.1
 // OLED Constants
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 32
@@ -93,7 +93,7 @@ Encoder enc3(ENC3A, ENC3B);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
 ADC * adc = new ADC();
 MovingAverageFilter omegaFilter1, omegaFilter2, omegaFilter3;
-
+MovingAverageFilter imuFilter1, imuFilter2, imuFilter3;
 
 STATE_DATA deltax;
 STATE_DATA x0;
@@ -157,6 +157,8 @@ void setup() {
   Serial.println(F("Brought up serial interfaces. Initializing..."));
   // Initialize I2C_2 for IMU
   Wire2.begin();
+  pinMode(IMU_INT, LOW);
+  digitalWrite(IMU_INT, LOW);
   // Initialize I2C_0 for OLED
   Wire.setSDA(SDA_ALT);
   Wire.setSCL(SCL_ALT);
@@ -288,60 +290,11 @@ void setup() {
   display.display();
   delay(100);
 
-  deltax.Thetax_offset=imu.pitch;
-  deltax.Thetay_offset=imu.roll;
-  deltax.Thetaz_offset=imu.yaw;
+  // deltax.Thetax_offset=imu.pitch;
+  // deltax.Thetay_offset=imu.roll;
+  // deltax.Thetaz_offset=imu.yaw;
 
-
-  // motor1._setMotorSpeed(1);
-  // delay(500);
-  // motor1._setMotorSpeed(0);
-  // float m1_torque_offset = 0;
-  // for (int i = 0; i <= 50; i++) {
-  //   m1_torque_offset += motor1.getTorque() / 50;
-  //   Serial.print("ZPC1: "); Serial.println(m1_torque_offset);
-  // }
-  // motor1.zeroPointCurrent = m1_torque_offset;
-
-  // motor2._setMotorSpeed(0.5);
-  // delay(500);
-  // motor2._setMotorSpeed(0);
-  // float m2_torque_offset = 0;
-  // for (int i = 0; i <= 50; i++) {
-  //   m2_torque_offset += motor2.getTorque() / 100;
-  // }
-  // motor2.zeroPointCurrent = m2_torque_offset;
-
-  // motor3._setMotorSpeed(0.5);
-  // delay(500);
-  // float m3_torque_offset = 0;
-  // motor3._setMotorSpeed(0);
-  // for (int i = 0; i <= 50; i++) {
-  //   m3_torque_offset += motor3.getTorque() / 100;
-  // }
-  // motor3.zeroPointCurrent = m3_torque_offset;
-  
-
-
-
-
-  // He aqui un delay.
-  // delay(1000);
-  // Calibrate sensor offset
-  // float m1_adc_offset = 0;
-  // float m2_adc_offset = 0;
-  // float m3_adc_offset = 0;
-  // for (int i = 0; i <= 100; i++) {
-  //   m1_adc_offset = motor1.getTorque();
-  //   Serial.print("ZPC1: "); Serial.println(m1_adc_offset);
-  //   m2_adc_offset += motor2.getTorque() / 100.0;
-  //   m3_adc_offset += motor3.getTorque() / 100.0;
-  //   delay(2);
-  // }
-  // motor1.zeroPointCurrent = m1_adc_offset;
-  // motor2.zeroPointCurrent = m2_adc_offset;
-  // motor3.zeroPointCurrent = m3_adc_offset;
-
+  // motor1.zeroPointCurrent = 0.05;
   // motor2.zeroPointCurrent = 0.11;
   // motor3.zeroPointCurrent = 0.18;
 
@@ -353,17 +306,12 @@ void setup() {
 
   start_time = micros();
   update_web = millis();
-
 }
 
 uint32_t deltat = 0;
-
 bool mot3_sign = false;
 
 void loop() {
-
-  updateInterruptIMU();
-  quaternionToDegrees();
 
   start_time = micros();
 
@@ -387,10 +335,10 @@ void loop() {
   motor2.setTorque(1.0);
   motor3.setTorque(0.5);
 
-  Serial.print("$"); Serial.print(motor1.getTorque());
-  Serial.print(" "); Serial.print(motor2.getTorque());
-  Serial.print(" "); Serial.print(motor3.getTorque());
-  Serial.println(";");
+  Serial.print(""); Serial.print(IMUangles.w1 * RAD_TO_DEG);
+  Serial.print(" "); Serial.print(IMUangles.w2 * RAD_TO_DEG);
+  Serial.print(" "); Serial.print(IMUangles.w3 * RAD_TO_DEG);
+  Serial.println("");
 
 
   if (millis() - update_web > 2000) {
@@ -414,11 +362,18 @@ void loop() {
 
 void enc_update() {
   TeensyDelay::trigger(TIMER_DELAY_ENC, TIMER_CHANNEL_ENC);
+
   read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read());
   omniangles.dw1 = omegaFilter1.updateFilter(omniangles.dw1);
-  omniangles.dw1 = omegaFilter2.updateFilter(omniangles.dw2);
+  omniangles.dw2 = omegaFilter2.updateFilter(omniangles.dw2);
   omniangles.dw3 = omegaFilter3.updateFilter(omniangles.dw3);
-  
+
+  updateInterruptIMU();
+  quaternionToDegrees();
+  read_IMU(&IMUangles, imu.pitch, imu.roll, imu.yaw);
+  IMUangles.dw1 = imuFilter1.updateFilter(IMUangles.dw1);
+  IMUangles.dw2 = imuFilter2.updateFilter(IMUangles.dw2);
+  IMUangles.dw3 = imuFilter3.updateFilter(IMUangles.dw3);
 }
 
 void motor_update() {
@@ -444,12 +399,10 @@ void updateInterruptIMU() {
     imu.my = (float) imu.magCount[1] * imu.mRes * imu.factoryMagCalibration[1] - imu.magBias[1];
     imu.mz = (float) imu.magCount[2] * imu.mRes * imu.factoryMagCalibration[2] - imu.magBias[2];
   }
-
   imu.updateTime();
-
-  //MadgwickQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -1*imu.mz, imu.deltat);
+  MahonyQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -imu.mz, imu.deltat);
   // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
-  MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
+  // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
 }
 
 
