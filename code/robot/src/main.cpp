@@ -51,6 +51,7 @@
 #include <TeensyDelay.h>
 #include <ADC.h>
 #include <Eigen.h>
+// #include <SparkFunMPU9250-DMP.h>
 
 #include "logo.h"
 #include "SPI.h"
@@ -83,7 +84,8 @@
 #define ADC_CALIBRATION_SAMPLES 100
 
 // IMU, motors, encoders and OLED objects
-MPU9250 imu(MPU9250_ADDRESS, Wire2, 400000);
+// MPU9250_DMP imudmp;
+MPU9250 imu_mpu(MPU9250_ADDRESS, Wire2, 400000);
 TorqueMotor motor1(PWM1, INA1, INB1, CS1);
 TorqueMotor motor2(PWM2, INA2, INB2, CS2);
 TorqueMotor motor3(PWM3, INA3, INB3, CS3);
@@ -199,43 +201,43 @@ void setup() {
   /**
    * IMU Configuration
    */
-  int8_t imu_whoami = imu.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
+  int8_t imu_whoami = imu_mpu.readByte(MPU9250_ADDRESS, WHO_AM_I_MPU9250);
   Serial.print(F("MPU9250 reported WHO_AM_I 0x")); Serial.println(imu_whoami, HEX);
   if (imu_whoami == 0x71) {
     Serial.println(F("MPU9250 is online..."));
     // Start by performing self test and reporting values
-    imu.MPU9250SelfTest(imu.selfTest);
+    imu_mpu.MPU9250SelfTest(imu_mpu.selfTest);
     // Calibrate gyro and accelerometers, load biases in bias registers
-    imu.calibrateMPU9250(imu.gyroBias, imu.accelBias);
+    imu_mpu.calibrateMPU9250(imu_mpu.gyroBias, imu_mpu.accelBias);
   } else {
     raise_error("MPU9250 error. Expected WHO_AM_I 0x71.");
   }
   // Initialize MPU
-  imu.initMPU9250();
+  imu_mpu.initMPU9250();
   Serial.println(F("MPU9250 initialized..."));
   // Verify MPU9250 embedded magnetometer for sanity.
-  int8_t imu_mag_whoami = imu.readByte(AK8963_ADDRESS, WHO_AM_I_AK8963);
+  int8_t imu_mag_whoami = imu_mpu.readByte(AK8963_ADDRESS, WHO_AM_I_AK8963);
   Serial.print(F("AK8963 reported WHO_AM_I 0x")); Serial.print(imu_mag_whoami, HEX);
   if (imu_mag_whoami == 0x48) {
     Serial.println(F("AK8963 is online..."));
   } else {
     raise_error("AK8963 error. Expected WHO_AM_I 0x48.");
   }  
-  imu.initAK8963(imu.factoryMagCalibration);
+  imu_mpu.initAK8963(imu_mpu.factoryMagCalibration);
   Serial.println(F("AK8963 initialized..."));
   // Obtain sensor resolutions
-  imu.getAres();
-  imu.getGres();
-  imu.getMres();
+  imu_mpu.getAres();
+  imu_mpu.getGres();
+  imu_mpu.getMres();
 #ifdef MAG_CAL
-  imu.magCalMPU9250(imu.magBias,imu.magScale);
+  imu_mpu.magCalMPU9250(imu_mpu.magBias,imu_mpu.magScale);
 #else
-  imu.magBias[0] = MAG_BIAS1;
-  imu.magBias[1] = MAG_BIAS2;
-  imu.magBias[2] = MAG_BIAS3;
-  imu.magScale[0] = MAG_SCALE1;
-  imu.magScale[1] = MAG_SCALE2;
-  imu.magScale[2] = MAG_SCALE3;
+  imu_mpu.magBias[0] = MAG_BIAS1;
+  imu_mpu.magBias[1] = MAG_BIAS2;
+  imu_mpu.magBias[2] = MAG_BIAS3;
+  imu_mpu.magScale[0] = MAG_SCALE1;
+  imu_mpu.magScale[1] = MAG_SCALE2;
+  imu_mpu.magScale[2] = MAG_SCALE3;
 #endif
   // Finished IMU setup. Signal with LEDs.
   Serial.println(F("Finished configuring IMU."));
@@ -259,21 +261,21 @@ void setup() {
   uint8_t convergence_iterations = 0;
 
   while (convergence_iterations < 150){
-    if(imu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
-      imu.readAccelData(imu.accelCount);
-      imu.ax = (float) imu.accelCount[0] * imu.aRes;
-      imu.ay = (float) imu.accelCount[1] * imu.aRes;
-      imu.az = (float) imu.accelCount[2] * imu.aRes;
-      imu.readGyroData(imu.gyroCount);
-      imu.gx = (float) imu.gyroCount[0] * imu.gRes;
-      imu.gy = (float) imu.gyroCount[1] * imu.gRes;
-      imu.gz = (float) imu.gyroCount[2] * imu.gRes;
-      imu.readMagData(imu.magCount);
-      imu.mx = (float) imu.magCount[0] * imu.mRes * imu.factoryMagCalibration[0] - imu.magBias[0];
-      imu.my = (float) imu.magCount[1] * imu.mRes * imu.factoryMagCalibration[1] - imu.magBias[1];
-      imu.mz = (float) imu.magCount[2] * imu.mRes * imu.factoryMagCalibration[2] - imu.magBias[2];
-      imu.updateTime();
-      MahonyQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -1*imu.mz, imu.deltat);
+    if(imu_mpu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
+      imu_mpu.readAccelData(imu_mpu.accelCount);
+      imu_mpu.ax = (float) imu_mpu.accelCount[0] * imu_mpu.aRes;
+      imu_mpu.ay = (float) imu_mpu.accelCount[1] * imu_mpu.aRes;
+      imu_mpu.az = (float) imu_mpu.accelCount[2] * imu_mpu.aRes;
+      imu_mpu.readGyroData(imu_mpu.gyroCount);
+      imu_mpu.gx = (float) imu_mpu.gyroCount[0] * imu_mpu.gRes;
+      imu_mpu.gy = (float) imu_mpu.gyroCount[1] * imu_mpu.gRes;
+      imu_mpu.gz = (float) imu_mpu.gyroCount[2] * imu_mpu.gRes;
+      imu_mpu.readMagData(imu_mpu.magCount);
+      imu_mpu.mx = (float) imu_mpu.magCount[0] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[0] - imu_mpu.magBias[0];
+      imu_mpu.my = (float) imu_mpu.magCount[1] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[1] - imu_mpu.magBias[1];
+      imu_mpu.mz = (float) imu_mpu.magCount[2] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[2] - imu_mpu.magBias[2];
+      imu_mpu.updateTime();
+      MahonyQuaternionUpdate(imu_mpu.ax, imu_mpu.ay, imu_mpu.az, imu_mpu.gx * DEG_TO_RAD, imu_mpu.gy * DEG_TO_RAD, imu_mpu.gz * DEG_TO_RAD, imu_mpu.my, imu_mpu.mx, -1*imu_mpu.mz, imu_mpu.deltat);
       convergence_iterations++;
     }
     delay(5);
@@ -284,15 +286,15 @@ void setup() {
   display.setCursor(0, 0);
   display.setTextColor(WHITE);
   display.println("Iterated 50 readings!");
-  display.print("YAW: "); display.println(imu.yaw);
-  display.print("PITCH: "); display.println(imu.pitch);
-  display.print("ROLL: "); display.println(imu.roll);
+  display.print("YAW: "); display.println(imu_mpu.yaw);
+  display.print("PITCH: "); display.println(imu_mpu.pitch);
+  display.print("ROLL: "); display.println(imu_mpu.roll);
   display.display();
   delay(100);
 
-  // deltax.Thetax_offset=imu.pitch;
-  // deltax.Thetay_offset=imu.roll;
-  // deltax.Thetaz_offset=imu.yaw;
+  // deltax.Thetax_offset=imu_mpu.pitch;
+  // deltax.Thetay_offset=imu_mpu.roll;
+  // deltax.Thetaz_offset=imu_mpu.yaw;
 
   // motor1.zeroPointCurrent = 0.05;
   // motor2.zeroPointCurrent = 0.11;
@@ -370,7 +372,7 @@ void enc_update() {
 
   updateInterruptIMU();
   quaternionToDegrees();
-  read_IMU(&IMUangles, imu.pitch, imu.roll, imu.yaw);
+  read_IMU(&IMUangles, imu_mpu.pitch, imu_mpu.roll, imu_mpu.yaw);
   IMUangles.dw1 = imuFilter1.updateFilter(IMUangles.dw1);
   IMUangles.dw2 = imuFilter2.updateFilter(IMUangles.dw2);
   IMUangles.dw3 = imuFilter3.updateFilter(IMUangles.dw3);
@@ -385,37 +387,38 @@ void motor_update() {
 
 
 void updateInterruptIMU() {
-  if(imu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
-    imu.readAccelData(imu.accelCount);
-    imu.ax = (float) imu.accelCount[0] * imu.aRes;
-    imu.ay = (float) imu.accelCount[1] * imu.aRes;
-    imu.az = (float) imu.accelCount[2] * imu.aRes;
-    imu.readGyroData(imu.gyroCount);
-    imu.gx = (float) imu.gyroCount[0] * imu.gRes;
-    imu.gy = (float) imu.gyroCount[1] * imu.gRes;
-    imu.gz = (float) imu.gyroCount[2] * imu.gRes;
-    imu.readMagData(imu.magCount);
-    imu.mx = (float) imu.magCount[0] * imu.mRes * imu.factoryMagCalibration[0] - imu.magBias[0];
-    imu.my = (float) imu.magCount[1] * imu.mRes * imu.factoryMagCalibration[1] - imu.magBias[1];
-    imu.mz = (float) imu.magCount[2] * imu.mRes * imu.factoryMagCalibration[2] - imu.magBias[2];
+  if(imu_mpu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
+    imu_mpu.readAccelData(imu_mpu.accelCount);
+    imu_mpu.ax = (float) imu_mpu.accelCount[0] * imu_mpu.aRes;
+    imu_mpu.ay = (float) imu_mpu.accelCount[1] * imu_mpu.aRes;
+    imu_mpu.az = (float) imu_mpu.accelCount[2] * imu_mpu.aRes;
+    imu_mpu.readGyroData(imu_mpu.gyroCount);
+    imu_mpu.gx = (float) imu_mpu.gyroCount[0] * imu_mpu.gRes;
+    imu_mpu.gy = (float) imu_mpu.gyroCount[1] * imu_mpu.gRes;
+    imu_mpu.gz = (float) imu_mpu.gyroCount[2] * imu_mpu.gRes;
+    imu_mpu.readMagData(imu_mpu.magCount);
+    imu_mpu.mx = (float) imu_mpu.magCount[0] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[0] - imu_mpu.magBias[0];
+    imu_mpu.my = (float) imu_mpu.magCount[1] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[1] - imu_mpu.magBias[1];
+    imu_mpu.mz = (float) imu_mpu.magCount[2] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[2] - imu_mpu.magBias[2];
   }
-  imu.updateTime();
-  MahonyQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my, imu.mx, -imu.mz, imu.deltat);
+  imu_mpu.updateTime();
+  MahonyQuaternionUpdate(imu_mpu.ax, imu_mpu.ay, imu_mpu.az, imu_mpu.gx * DEG_TO_RAD, imu_mpu.gy * DEG_TO_RAD, imu_mpu.gz * DEG_TO_RAD, imu_mpu.my, imu_mpu.mx, -imu_mpu.mz, imu_mpu.deltat);
+  // MahonyQuaternionUpdate(imu_mpu.ax, -imu_mpu.ay, -imu_mpu.az, imu_mpu.gx * DEG_TO_RAD, -imu_mpu.gy * DEG_TO_RAD, -imu_mpu.gz * DEG_TO_RAD, imu_mpu.my, -imu_mpu.mx, imu_mpu.mz, imu_mpu.deltat);
   // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
   // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
 }
 
 
 void quaternionToDegrees() {
-  imu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
+  imu_mpu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
                     * *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1)
                     * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) - *(getQ()+3)
                     * *(getQ()+3));
-  imu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
+  imu_mpu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
                       * *(getQ()+2)));
-  imu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
+  imu_mpu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
                       * *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1)
                       * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) + *(getQ()+3)
                       * *(getQ()+3));
-  imu.yaw -= MAGNETIC_DECLINATION;
+  imu_mpu.yaw -= MAGNETIC_DECLINATION * DEG_TO_RAD;
 }
