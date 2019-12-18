@@ -41,7 +41,7 @@ inv_error_t MPU9250_DMP::begin(void)
 	inv_error_t result;
     struct int_param_s int_param;
 	
-	Wire.begin();
+	Wire2.begin();
 	
 	result = mpu_init(&int_param);
 	
@@ -617,7 +617,7 @@ float MPU9250_DMP::qToFloat(long number, unsigned char q)
 	{
 		mask |= (1<<i);
 	}
-	return (number >> q) + ((number & mask) / (float) (2<<(q-1)));
+	return (number >> q) + ((number & mask) / (float) (2L<<(q-1L)));
 }
 
 void MPU9250_DMP::computeEulerAngles(bool degrees)
