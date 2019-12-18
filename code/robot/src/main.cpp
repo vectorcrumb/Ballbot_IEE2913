@@ -51,7 +51,6 @@
 #include <TeensyDelay.h>
 #include <ADC.h>
 #include <Eigen.h>
-// #include <SparkFunMPU9250-DMP.h>
 
 #include "logo.h"
 #include "SPI.h"
@@ -84,7 +83,6 @@
 #define ADC_CALIBRATION_SAMPLES 100
 
 // IMU, motors, encoders and OLED objects
-// MPU9250_DMP imudmp;
 MPU9250 imu_mpu(MPU9250_ADDRESS, Wire2, 400000);
 TorqueMotor motor1(PWM1, INA1, INB1, CS1);
 TorqueMotor motor2(PWM2, INA2, INB2, CS2);
@@ -115,6 +113,8 @@ int drive_speed = 50;
 uint32_t start_time = 0;
 uint32_t update_web = 0;
 bool Thetaz_firstrun = 1;
+
+float imu_pitch_offset = 0, imu_roll_offset = 0, imu_yaw_offset = 0;
 
 void blink_led(int period, int repeat) {
   for (int i = 0; i < repeat; i++) {
@@ -260,7 +260,7 @@ void setup() {
 
   uint8_t convergence_iterations = 0;
 
-  while (convergence_iterations < 150){
+  while (convergence_iterations < 200){
     if(imu_mpu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
       imu_mpu.readAccelData(imu_mpu.accelCount);
       imu_mpu.ax = (float) imu_mpu.accelCount[0] * imu_mpu.aRes;
@@ -282,15 +282,26 @@ void setup() {
   }
   quaternionToDegrees();
 
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.setTextColor(WHITE);
-  display.println("Iterated 50 readings!");
-  display.print("YAW: "); display.println(imu_mpu.yaw);
-  display.print("PITCH: "); display.println(imu_mpu.pitch);
-  display.print("ROLL: "); display.println(imu_mpu.roll);
-  display.display();
-  delay(100);
+  imu_pitch_offset = imu_mpu.pitch;
+  imu_roll_offset = imu_mpu.roll;
+  imu_yaw_offset = imu_mpu.yaw;
+
+  // Serial.println("Calculated offsets"); 
+  // Serial.print("PITCH: "); Serial.println(imu_pitch_offset);
+  // Serial.print("ROLL: "); Serial.println(imu_roll_offset);
+  // Serial.print("YAW: "); Serial.println(imu_yaw_offset);
+
+  // display.clearDisplay();
+  // display.setCursor(0, 0);
+  // display.setTextColor(WHITE);
+  // display.println("Iterated 220 readings!");
+  // display.print("YAW: "); display.println(imu_mpu.yaw);
+  // display.print("PITCH: "); display.println(imu_mpu.pitch);
+  // display.print("ROLL: "); display.println(imu_mpu.roll);
+  // display.display();
+  // delay(100);
+
+  
 
   // deltax.Thetax_offset=imu_mpu.pitch;
   // deltax.Thetay_offset=imu_mpu.roll;
@@ -337,9 +348,9 @@ void loop() {
   motor2.setTorque(1.0);
   motor3.setTorque(0.5);
 
-  Serial.print(""); Serial.print(IMUangles.w1 * RAD_TO_DEG);
-  Serial.print(" "); Serial.print(IMUangles.w2 * RAD_TO_DEG);
-  Serial.print(" "); Serial.print(IMUangles.w3 * RAD_TO_DEG);
+  Serial.print(""); Serial.print(motor1.torque_measured);  // PITCH
+  Serial.print(" "); Serial.print(motor2.torque_measured); // ROLL
+  Serial.print(" "); Serial.print(motor3.torque_measured); // YAW
   Serial.println("");
 
 
@@ -372,7 +383,7 @@ void enc_update() {
 
   updateInterruptIMU();
   quaternionToDegrees();
-  read_IMU(&IMUangles, imu_mpu.pitch, imu_mpu.roll, imu_mpu.yaw);
+  read_IMU(&IMUangles, imu_mpu.pitch - imu_pitch_offset, imu_mpu.roll - imu_roll_offset, imu_mpu.yaw - imu_yaw_offset);
   IMUangles.dw1 = imuFilter1.updateFilter(IMUangles.dw1);
   IMUangles.dw2 = imuFilter2.updateFilter(IMUangles.dw2);
   IMUangles.dw3 = imuFilter3.updateFilter(IMUangles.dw3);
@@ -402,7 +413,7 @@ void updateInterruptIMU() {
     imu_mpu.mz = (float) imu_mpu.magCount[2] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[2] - imu_mpu.magBias[2];
   }
   imu_mpu.updateTime();
-  MahonyQuaternionUpdate(imu_mpu.ax, imu_mpu.ay, imu_mpu.az, imu_mpu.gx * DEG_TO_RAD, imu_mpu.gy * DEG_TO_RAD, imu_mpu.gz * DEG_TO_RAD, imu_mpu.my, imu_mpu.mx, -imu_mpu.mz, imu_mpu.deltat);
+  MahonyQuaternionUpdate(imu_mpu.ax, imu_mpu.ay, imu_mpu.az, imu_mpu.gx * DEG_TO_RAD, imu_mpu.gy * DEG_TO_RAD, imu_mpu.gz * DEG_TO_RAD, imu_mpu.my, imu_mpu.mx, -1*imu_mpu.mz, imu_mpu.deltat);
   // MahonyQuaternionUpdate(imu_mpu.ax, -imu_mpu.ay, -imu_mpu.az, imu_mpu.gx * DEG_TO_RAD, -imu_mpu.gy * DEG_TO_RAD, -imu_mpu.gz * DEG_TO_RAD, imu_mpu.my, -imu_mpu.mx, imu_mpu.mz, imu_mpu.deltat);
   // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
   // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
@@ -413,7 +424,7 @@ void quaternionToDegrees() {
   imu_mpu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
                     * *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1)
                     * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) - *(getQ()+3)
-                    * *(getQ()+3));
+                    * *(getQ()+3  ));
   imu_mpu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
                       * *(getQ()+2)));
   imu_mpu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
