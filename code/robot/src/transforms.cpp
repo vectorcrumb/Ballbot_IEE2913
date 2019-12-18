@@ -18,7 +18,7 @@ void read_IMU(ANGLES* IMUangles, MPU9250 imu, float deltat){
     // NOT NED ANGLES.
     float ThetaX = -1*imu.pitch; 
     float ThetaY = imu.roll;
-    float ThetaZ = imu.yaw*0;
+    float ThetaZ = imu.yaw;
     IMUangles->dw1 = (ThetaX-IMUangles->w1)/deltat*1000;
     IMUangles->dw2 = (ThetaY-IMUangles->w2)/deltat*1000;
     IMUangles->dw3 = (ThetaZ-IMUangles->w3)/deltat*1000;

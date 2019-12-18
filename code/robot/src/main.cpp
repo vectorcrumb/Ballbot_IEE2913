@@ -178,25 +178,7 @@ void setup() {
   adc->setAveraging(32, ADC_1);
   adc->setResolution(12, ADC_1);
 
-  // Calibrate sensor offset
-  uint32_t m1_adc_offset = 0;
-  uint32_t m2_adc_offset = 0;
-  uint32_t m3_adc_offset = 0;
-  for (int i = 0; i <= ADC_CALIBRATION_SAMPLES; i++) {
-    m1_adc_offset += adc->analogRead(motor1.csPin);
-    m2_adc_offset += adc->analogRead(motor2.csPin);
-    m3_adc_offset += adc->analogRead(motor3.csPin);
-    delay(2);
-  }
-  // motor1.zeroPointCurrent = 2048 - (float) m1_adc_offset / ADC_CALIBRATION_SAMPLES;
-  // motor2.zeroPointCurrent = 2048 - (float) m2_adc_offset / ADC_CALIBRATION_SAMPLES;
-  // motor3.zeroPointCurrent = 2048 - (float) m3_adc_offset / ADC_CALIBRATION_SAMPLES;
-  delay(1);
-
-  Serial.print("ZPC1: "); Serial.println(motor1.zeroPointCurrent);
-  Serial.print("ZPC2: "); Serial.println(motor2.zeroPointCurrent);
-  Serial.print("ZPC3: "); Serial.println(motor3.zeroPointCurrent);
-
+  
 
   /**
    * OLED Configuration
@@ -310,6 +292,59 @@ void setup() {
   deltax.Thetay_offset=imu.roll;
   deltax.Thetaz_offset=imu.yaw;
 
+
+  // motor1._setMotorSpeed(1);
+  // delay(500);
+  // motor1._setMotorSpeed(0);
+  // float m1_torque_offset = 0;
+  // for (int i = 0; i <= 50; i++) {
+  //   m1_torque_offset += motor1.getTorque() / 50;
+  //   Serial.print("ZPC1: "); Serial.println(m1_torque_offset);
+  // }
+  // motor1.zeroPointCurrent = m1_torque_offset;
+
+  // motor2._setMotorSpeed(0.5);
+  // delay(500);
+  // motor2._setMotorSpeed(0);
+  // float m2_torque_offset = 0;
+  // for (int i = 0; i <= 50; i++) {
+  //   m2_torque_offset += motor2.getTorque() / 100;
+  // }
+  // motor2.zeroPointCurrent = m2_torque_offset;
+
+  // motor3._setMotorSpeed(0.5);
+  // delay(500);
+  // float m3_torque_offset = 0;
+  // motor3._setMotorSpeed(0);
+  // for (int i = 0; i <= 50; i++) {
+  //   m3_torque_offset += motor3.getTorque() / 100;
+  // }
+  // motor3.zeroPointCurrent = m3_torque_offset;
+  
+
+
+
+
+  // He aqui un delay.
+  // delay(1000);
+  // Calibrate sensor offset
+  // float m1_adc_offset = 0;
+  // float m2_adc_offset = 0;
+  // float m3_adc_offset = 0;
+  // for (int i = 0; i <= 100; i++) {
+  //   m1_adc_offset = motor1.getTorque();
+  //   Serial.print("ZPC1: "); Serial.println(m1_adc_offset);
+  //   m2_adc_offset += motor2.getTorque() / 100.0;
+  //   m3_adc_offset += motor3.getTorque() / 100.0;
+  //   delay(2);
+  // }
+  // motor1.zeroPointCurrent = m1_adc_offset;
+  // motor2.zeroPointCurrent = m2_adc_offset;
+  // motor3.zeroPointCurrent = m3_adc_offset;
+
+  // motor2.zeroPointCurrent = 0.11;
+  // motor3.zeroPointCurrent = 0.18;
+
   TeensyDelay::begin();
   TeensyDelay::addDelayChannel(enc_update, TIMER_CHANNEL_ENC);
   TeensyDelay::trigger(TIMER_DELAY_ENC, TIMER_CHANNEL_ENC);
@@ -323,10 +358,12 @@ void setup() {
 
 uint32_t deltat = 0;
 
+bool mot3_sign = false;
+
 void loop() {
 
-  //updateInterruptIMU();
-  //quaternionToDegrees();
+  updateInterruptIMU();
+  quaternionToDegrees();
 
   start_time = micros();
 
@@ -337,7 +374,6 @@ void loop() {
   
   //-------->Funciones para leer angulos IMU, encoders, que entregan structs para omniangulos y angulos encoder
   //read_IMU(&IMUangles, imu, deltat);
-  // read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read(), deltat);
   
   //Arma estado deltax
   //get_phi(&deltax, &x0, &M_od_omniangles, &M_od_IMUangles, &omniangles, &IMUangles, deltat);
@@ -347,11 +383,17 @@ void loop() {
   //control_signal(&T_virtual, &K, &u0, &deltax);
   //torque_conversion(&M_torques, &T_real, &T_virtual);
 
-  motor1.setTorque(-2);
-  motor2.setTorque(1);
-  motor3.setTorque(1);
+  motor1.setTorque(1.5);
+  motor2.setTorque(1.0);
+  motor3.setTorque(0.5);
 
-  if (millis() - update_web > 20) {
+  Serial.print("$"); Serial.print(motor1.getTorque());
+  Serial.print(" "); Serial.print(motor2.getTorque());
+  Serial.print(" "); Serial.print(motor3.getTorque());
+  Serial.println(";");
+
+
+  if (millis() - update_web > 2000) {
     update_web = millis();
 
     display.clearDisplay();
@@ -372,10 +414,11 @@ void loop() {
 
 void enc_update() {
   TeensyDelay::trigger(TIMER_DELAY_ENC, TIMER_CHANNEL_ENC);
-  read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read(), 20);
+  read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read());
   omniangles.dw1 = omegaFilter1.updateFilter(omniangles.dw1);
   omniangles.dw1 = omegaFilter2.updateFilter(omniangles.dw2);
   omniangles.dw3 = omegaFilter3.updateFilter(omniangles.dw3);
+  
 }
 
 void motor_update() {

@@ -42,11 +42,11 @@
 /**
  * Kp constant approximated as DC/e_max = Kp = 1.0/(2.8 - 0) = 0.357
  */
-#define MOTOR_PID_KP 0.3
-#define MOTOR_PID_KI 2.5
+#define MOTOR_PID_KP 0.25
+#define MOTOR_PID_KI 0.8
 #define MOTOR_PID_MIN_U -1
 #define MOTOR_PID_MAX_U 1
-#define MOTOR_PID_MAX_INT 0.5
+#define MOTOR_PID_MAX_INT 2
 
 class TorqueMotor {
 public:
@@ -58,6 +58,7 @@ public:
     float getCurrent();
     float getTorque();
     float getError();
+    void _setMotorSpeed(float speed);
     float torque_setpoint = 0, torque_measured = 0, output = 0;
     float err = 0, err_int = 0;
     float Kp = MOTOR_PID_KP, Ki = MOTOR_PID_KI;

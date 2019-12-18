@@ -23,7 +23,7 @@ float TorqueMotor::getCurrent() {
 }
 
 float TorqueMotor::getTorque() {
-    return this->analog_measurement * TORQUE_A + TORQUE_B;
+    return this->analog_measurement * TORQUE_A + TORQUE_B - this->zeroPointCurrent;
 }
 
 float TorqueMotor::getError() {
@@ -60,4 +60,9 @@ void TorqueMotor::updateMotor(int16_t analog_reading) {
     this->torque_measured = this->getTorque();
     this->output = this->calculatePID(this->torque_setpoint, this->torque_measured);
     this->motor->setSpeed(this->output);
+}
+
+
+void TorqueMotor::_setMotorSpeed(float speed) {
+    this->motor->setSpeed(speed);
 }

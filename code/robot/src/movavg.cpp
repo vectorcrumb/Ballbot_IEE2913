@@ -5,7 +5,6 @@ MovingAverageFilter::MovingAverageFilter() {
 };
 
 MovingAverageFilter::~MovingAverageFilter() {
-    delete samples;
 }
 
 float MovingAverageFilter::updateFilter(float measurement) {
@@ -16,7 +15,7 @@ float MovingAverageFilter::updateFilter(float measurement) {
 
 float MovingAverageFilter::peekFilter() {
     float temp_sum = 0;
-    for (int i = 0; i <= FILTER_ORDER; i++) {
+    for (int i = 0; i < FILTER_ORDER; i++) {
         temp_sum += this->samples[i];
     }
     return temp_sum / (float) FILTER_ORDER;

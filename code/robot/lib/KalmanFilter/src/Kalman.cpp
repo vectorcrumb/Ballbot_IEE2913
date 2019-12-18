@@ -42,6 +42,7 @@ bool KalmanFilter::update(const Eigen::VectorXf& y) {
     // Step forwared in time
     x_hat = x_hat_new;
     t += dt;
+    return true;
 }
 
 
