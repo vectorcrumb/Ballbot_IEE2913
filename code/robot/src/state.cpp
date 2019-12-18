@@ -1,10 +1,10 @@
 #include "state.h"
 #include "Arduino.h"
 
-#define K1 0.0048
-#define K2 8.500
-#define K3 0.1575
-#define K4 3.1767
+#define K1 0.0039
+#define K2 9.7968
+#define K3 0.1274
+#define K4 3.4603
 
 void get_phi(STATE_DATA* deltax, STATE_DATA* x0, MATRIX* M_od_omniangles, MATRIX* M_od_IMUangles, ANGLES* omniangles, ANGLES* IMUangles, float deltat){
     float dPhix = (M_od_omniangles->m11)*(omniangles->dw1)+(M_od_omniangles->m12)*(omniangles->dw2)+(M_od_omniangles->m13)*(omniangles->dw3)+(M_od_IMUangles->m11)*(IMUangles->dw1)+(M_od_IMUangles->m12)*(IMUangles->dw2)+(M_od_IMUangles->m13)*(IMUangles->dw3);
