@@ -13,7 +13,7 @@ void torque_conversion(MATRIX* M_torques, TORQUES* T_real, TORQUES* T_virtual){
     if (T_real->Tz3<-2.5) T_real->Tz3 =-2.5;
 }
 
-void read_IMU(ANGLES* IMUangles, float pitch, float roll, float yaw) {
+void read_IMU(volatile ANGLES* IMUangles, float pitch, float roll, float yaw) {
 
     IMUangles->dw1 = (pitch - IMUangles->w1) * 100;
     IMUangles->dw2 = (roll - IMUangles->w2) * 100;

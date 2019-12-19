@@ -69,5 +69,5 @@ void TorqueMotor::updateMotor(int16_t analog_reading) {
 
 
 void TorqueMotor::_setMotorSpeed(float speed) {
-    this->motor->setSpeed(speed * this->direction);
+    this->motor->setSpeed(speed * (float) this->direction);
 }

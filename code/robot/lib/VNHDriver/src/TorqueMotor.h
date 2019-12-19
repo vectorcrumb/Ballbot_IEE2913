@@ -42,11 +42,11 @@
 /**
  * Kp constant approximated as DC/e_max = Kp = 1.0/(2.8 - 0) = 0.357
  */
-#define MOTOR_PID_KP 0.25
-#define MOTOR_PID_KI 0.8
+#define MOTOR_PID_KP 0.2
+#define MOTOR_PID_KI 0.5
 #define MOTOR_PID_MIN_U -1
 #define MOTOR_PID_MAX_U 1
-#define MOTOR_PID_MAX_INT 2
+#define MOTOR_PID_MAX_INT 1.2
 
 class TorqueMotor {
 public:

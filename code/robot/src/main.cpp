@@ -98,7 +98,7 @@ MovingAverageFilter omegaFilter1, omegaFilter2, omegaFilter3;
 MovingAverageFilter imuFilter1, imuFilter2, imuFilter3;
 
 volatile ANGLES omniangles;
-ANGLES IMUangles;
+volatile ANGLES IMUangles;
 
 int drive_speed = 50;
 uint32_t start_time = 0;
@@ -111,7 +111,7 @@ float imu_pitch_offset = 0, imu_roll_offset = 0, imu_yaw_offset = 0;
 void blink_led(int period, int repeat);
 void raise_error(const char* error_message);
 void quaternionToDegrees();
-void updateInterruptIMU();
+bool updateInterruptIMU();
 void enc_update();
 void motor_update();
 void saturate_torques(Eigen::Ref<Eigen::Vector3f> t_mat);
@@ -153,7 +153,15 @@ void setup() {
   VEC_torqueReal << 0, 0, 0;
   VEC_torque0 << 0, 0, 0;
 
-  GAIN_lqrControl << 0.0039, 9.8109, 0.1275, 3.4596;
+  // GAIN_lqrControl << 0.0039, 9.8109, 0.1275, 3.4596;
+  // GAIN_lqrControl << 0.0052, 61.0197, 0.1217, 5.5012;
+
+  // GAIN_lqrControl << 0.00070257015141, 9.547963918279745, 0.016563046688473, 1.771180854469351;
+  // GAIN_lqrYawControl << 0.0, 0.001814119036152, 0.0, 0.605896706265266;
+
+  GAIN_lqrControl << 0.0039, 4.8109, 0.0575, 2.4596;
+  GAIN_lqrYawControl << 1.0, 0.1, 0.8, 3.6;
+
 
   /**
    * General Configuration
@@ -266,23 +274,7 @@ void setup() {
   uint8_t convergence_iterations = 0;
 
   while (convergence_iterations < 200){
-    if(imu_mpu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
-      imu_mpu.readAccelData(imu_mpu.accelCount);
-      imu_mpu.ax = (float) imu_mpu.accelCount[0] * imu_mpu.aRes;
-      imu_mpu.ay = (float) imu_mpu.accelCount[1] * imu_mpu.aRes;
-      imu_mpu.az = (float) imu_mpu.accelCount[2] * imu_mpu.aRes;
-      imu_mpu.readGyroData(imu_mpu.gyroCount);
-      imu_mpu.gx = (float) imu_mpu.gyroCount[0] * imu_mpu.gRes;
-      imu_mpu.gy = (float) imu_mpu.gyroCount[1] * imu_mpu.gRes;
-      imu_mpu.gz = (float) imu_mpu.gyroCount[2] * imu_mpu.gRes;
-      imu_mpu.readMagData(imu_mpu.magCount);
-      imu_mpu.mx = (float) imu_mpu.magCount[0] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[0] - imu_mpu.magBias[0];
-      imu_mpu.my = (float) imu_mpu.magCount[1] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[1] - imu_mpu.magBias[1];
-      imu_mpu.mz = (float) imu_mpu.magCount[2] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[2] - imu_mpu.magBias[2];
-      imu_mpu.updateTime();
-      MahonyQuaternionUpdate(imu_mpu.ax, imu_mpu.ay, imu_mpu.az, imu_mpu.gx * DEG_TO_RAD, imu_mpu.gy * DEG_TO_RAD, imu_mpu.gz * DEG_TO_RAD, imu_mpu.my, imu_mpu.mx, -1*imu_mpu.mz, imu_mpu.deltat);
-      convergence_iterations++;
-    }
+    if(updateInterruptIMU()) convergence_iterations++;
     delay(5);
   }
   quaternionToDegrees();
@@ -310,7 +302,7 @@ void loop() {
   start_time = micros();
   // State reconstruction. Does not reconstruct Z (rotation) model state
   TEMPVEC_omega_wheels << (float) omniangles.dw1, (float) omniangles.dw2, (float) omniangles.dw3;
-  TEMPVEC_omega_body << IMUangles.dw1, IMUangles.dw2, IMUangles.dw3;
+  TEMPVEC_omega_body << (float) IMUangles.dw1, (float) IMUangles.dw2, (float) IMUangles.dw3;
   TEMPVEC_phi = MAT_odometryEncTransform * TEMPVEC_omega_wheels + MAT_odometryIMUTransform * TEMPVEC_omega_body;
   // Phi reconstruction for X and Y
   VEC_stateX(0) += 0.000001 * deltat * TEMPVEC_phi(0);
@@ -328,25 +320,27 @@ void loop() {
   VEC_stateY(3) = IMUangles.dw2;
   VEC_stateZ(3) = IMUangles.dw3;
   // Proximamente: State estimation
-  // Control Law
+  // Control Law: LQR
   VEC_torqueVirtual(0) = GAIN_lqrControl.dot(VEC_stateX);
-  VEC_torqueVirtual(0) *= -1;
   VEC_torqueVirtual(1) = GAIN_lqrControl.dot(VEC_stateY);
+  VEC_torqueVirtual(2) = GAIN_lqrYawControl.dot(VEC_stateZ);
+  VEC_torqueVirtual(0) *= -1;
   VEC_torqueVirtual(1) *= -1;
+  VEC_torqueVirtual(2) *= -1;
   // Torque reference system transform
   VEC_torqueReal = MAT_torqueTransform * VEC_torqueVirtual;
   // Saturate outputs
   saturate_torques(VEC_torqueReal);
-  // Update torque setpoints
+  // Update torque setpoints. Motors 2 and 3 are flipped due to CW order in model and CCW orden in robot
   motor1.setTorque(VEC_torqueReal(0));
   motor3.setTorque(VEC_torqueReal(1));
   motor2.setTorque(VEC_torqueReal(2));
 
   if (millis() - update_web > 100) {
     update_web = millis();
-    Serial.print(motor1.torque_setpoint); Serial.print(" ");
-    Serial.print(motor2.torque_setpoint); Serial.print(" ");
-    Serial.print(motor3.torque_setpoint); Serial.print("");
+    Serial.print(IMUangles.w1); Serial.print(" ");
+    Serial.print(IMUangles.w2); Serial.print(" ");
+    Serial.print(IMUangles.w3); Serial.println("");
   }
 
   deltat = micros() - start_time;
@@ -381,7 +375,8 @@ void saturate_torques(Eigen::Ref<Eigen::Vector3f> t_mat) {
   }
 }
 
-void updateInterruptIMU() {
+bool updateInterruptIMU() {
+  bool success = false;
   if(imu_mpu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
     imu_mpu.readAccelData(imu_mpu.accelCount);
     imu_mpu.ax = (float) imu_mpu.accelCount[0] * imu_mpu.aRes;
@@ -395,9 +390,11 @@ void updateInterruptIMU() {
     imu_mpu.mx = (float) imu_mpu.magCount[0] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[0] - imu_mpu.magBias[0];
     imu_mpu.my = (float) imu_mpu.magCount[1] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[1] - imu_mpu.magBias[1];
     imu_mpu.mz = (float) imu_mpu.magCount[2] * imu_mpu.mRes * imu_mpu.factoryMagCalibration[2] - imu_mpu.magBias[2];
+    success = true;
   }
   imu_mpu.updateTime();
   MahonyQuaternionUpdate(imu_mpu.ax, imu_mpu.ay, imu_mpu.az, imu_mpu.gx * DEG_TO_RAD, imu_mpu.gy * DEG_TO_RAD, imu_mpu.gz * DEG_TO_RAD, imu_mpu.my, imu_mpu.mx, -1*imu_mpu.mz, imu_mpu.deltat);
+  return success;
 }
 
 void quaternionToDegrees() {
