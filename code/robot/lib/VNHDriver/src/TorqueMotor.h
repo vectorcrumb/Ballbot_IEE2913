@@ -50,7 +50,7 @@
 
 class TorqueMotor {
 public:
-    TorqueMotor(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin, uint8_t cs_pin);
+    TorqueMotor(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin, uint8_t cs_pin, bool inverted);
     ~TorqueMotor();
     void setTorque(float torque);
     void updateMotor(int16_t analog_reading);
@@ -68,6 +68,7 @@ public:
 private:
     VNHDriver * motor;
     uint8_t pwmPin, inaPin, inbPin;
+    int8_t direction = 1;
 };
 
 #endif

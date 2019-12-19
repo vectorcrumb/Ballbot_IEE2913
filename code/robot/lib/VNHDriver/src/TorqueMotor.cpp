@@ -1,13 +1,18 @@
 #include "TorqueMotor.h"
 
 
-TorqueMotor::TorqueMotor(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin, uint8_t cs_pin) {
+TorqueMotor::TorqueMotor(uint8_t pwm_pin, uint8_t ina_pin, uint8_t inb_pin, uint8_t cs_pin, bool inverted) {
     // Configure motor
     this->motor = new VNHDriver();
     this->motor->begin(pwm_pin, ina_pin, inb_pin);
     this->setTorque(0);
     // Current sensor pin
-    this->csPin = cs_pin;    
+    this->csPin = cs_pin;  
+    if (inverted) {
+        this->direction = -1;
+    } else {
+        this->direction = 1;
+    }
 }
 
 TorqueMotor::~TorqueMotor() {
@@ -59,10 +64,10 @@ void TorqueMotor::updateMotor(int16_t analog_reading) {
     this->analog_measurement = analog_reading;
     this->torque_measured = this->getTorque();
     this->output = this->calculatePID(this->torque_setpoint, this->torque_measured);
-    this->motor->setSpeed(this->output);
+    this->_setMotorSpeed(this->output);
 }
 
 
 void TorqueMotor::_setMotorSpeed(float speed) {
-    this->motor->setSpeed(speed);
+    this->motor->setSpeed(speed * this->direction);
 }

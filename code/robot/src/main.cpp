@@ -81,12 +81,14 @@
 #define TIMER_DELAY_ENC 10000
 #define TIMER_DELAY_ENC_HZ 100
 #define ADC_CALIBRATION_SAMPLES 100
+#define TORQUE_SATURATION_LIMIT 2.8
+
 
 // IMU, motors, encoders and OLED objects
 MPU9250 imu_mpu(MPU9250_ADDRESS, Wire2, 400000);
-TorqueMotor motor1(PWM1, INA1, INB1, CS1);
-TorqueMotor motor2(PWM2, INA2, INB2, CS2);
-TorqueMotor motor3(PWM3, INA3, INB3, CS3);
+TorqueMotor motor1(PWM1, INA1, INB1, CS1, true);
+TorqueMotor motor2(PWM2, INA2, INB2, CS2, true);
+TorqueMotor motor3(PWM3, INA3, INB3, CS3, true);
 Encoder enc1(ENC1A, ENC1B);
 Encoder enc2(ENC2A, ENC2B);
 Encoder enc3(ENC3A, ENC3B);
@@ -95,60 +97,63 @@ ADC * adc = new ADC();
 MovingAverageFilter omegaFilter1, omegaFilter2, omegaFilter3;
 MovingAverageFilter imuFilter1, imuFilter2, imuFilter3;
 
-STATE_DATA deltax;
-STATE_DATA x0;
-STATE_DATA K;
-TORQUES T_virtual;
-TORQUES T_real;
-TORQUES u0;
-VOLTAGES V_torque;
-VOLTAGES V_PWM;
 volatile ANGLES omniangles;
 ANGLES IMUangles;
-MATRIX M_torques;
-MATRIX M_od_IMUangles;
-MATRIX M_od_omniangles;
 
 int drive_speed = 50;
 uint32_t start_time = 0;
 uint32_t update_web = 0;
 bool Thetaz_firstrun = 1;
-
+uint32_t deltat = 0;
 float imu_pitch_offset = 0, imu_roll_offset = 0, imu_yaw_offset = 0;
 
-void blink_led(int period, int repeat) {
-  for (int i = 0; i < repeat; i++) {
-    digitalWrite(13, HIGH);
-    delay(period);
-    digitalWrite(13, LOW);
-    delay(period);
-  }
-}
 
-void raise_error(const char* error_message) {
-  Serial.println(F("Error during execution."));
-  Serial.println(error_message);
-  Serial.println(F("Freezing robot ..."));
-  while(true) {
-    digitalWriteFast(LEDG1, HIGH);
-    digitalWriteFast(LEDR2, !digitalReadFast(LEDR2));
-    digitalWriteFast(LEDR1, !digitalReadFast(LEDR1));
-    delay(500);
-  }
-}
-
-
+void blink_led(int period, int repeat);
+void raise_error(const char* error_message);
 void quaternionToDegrees();
 void updateInterruptIMU();
 void enc_update();
 void motor_update();
+void saturate_torques(Eigen::Ref<Eigen::Vector3f> t_mat);
+
+
+
+Eigen::Matrix3f MAT_torqueTransform;
+Eigen::Matrix3f MAT_odometryEncTransform, MAT_odometryIMUTransform; 
+Eigen::Vector4f VEC_stateX, VEC_stateY, VEC_stateZ, VEC_stateX0, VEC_stateY0, VEC_stateZ0;
+Eigen::Vector3f VEC_torqueVirtual, VEC_torqueReal, VEC_torque0;
+Eigen::Vector4f GAIN_lqrControl, GAIN_lqrYawControl;
+Eigen::Vector3f TEMPVEC_phi, TEMPVEC_omega_wheels, TEMPVEC_omega_body;
+
 
 void setup() {
 
-  Eigen::MatrixXf Pp(2,2);
+  MAT_torqueTransform << 0.942809,  0,        -0.3333, 
+                        -0.471405, -0.816497, -0.3333, 
+                        -0.471405,  0.816497, -0.3333;
+  MAT_odometryEncTransform << -0.942809,  0.471405,   0.471405,
+                              0,          -0.816497,  0.816497,
+                              0.471405,   0.471405,   0.471405;
+  MAT_odometryIMUTransform << 1, 0, 0, 
+                              0, 1, 0, 
+                              0, 0, 1;
+  
+  TEMPVEC_phi << 0, 0, 0;
+  TEMPVEC_omega_wheels << 0, 0, 0;
+  TEMPVEC_omega_body << 0, 0, 0;
 
-  Pp << 1, 2,
-        3, 4;
+  VEC_stateX << 0, 0, 0, 0;
+  VEC_stateY << 0, 0, 0, 0;
+  VEC_stateZ << 0, 0, 0, 0;
+  VEC_stateX0 << 0, 0, 0, 0;
+  VEC_stateY0 << 0, 0, 0, 0;
+  VEC_stateZ0 << 0, 0, 0, 0;
+
+  VEC_torqueVirtual << 0, 0, 0;
+  VEC_torqueReal << 0, 0, 0;
+  VEC_torque0 << 0, 0, 0;
+
+  GAIN_lqrControl << 0.0039, 9.8109, 0.1275, 3.4596;
 
   /**
    * General Configuration
@@ -286,27 +291,6 @@ void setup() {
   imu_roll_offset = imu_mpu.roll;
   imu_yaw_offset = imu_mpu.yaw;
 
-  // Serial.println("Calculated offsets"); 
-  // Serial.print("PITCH: "); Serial.println(imu_pitch_offset);
-  // Serial.print("ROLL: "); Serial.println(imu_roll_offset);
-  // Serial.print("YAW: "); Serial.println(imu_yaw_offset);
-
-  // display.clearDisplay();
-  // display.setCursor(0, 0);
-  // display.setTextColor(WHITE);
-  // display.println("Iterated 220 readings!");
-  // display.print("YAW: "); display.println(imu_mpu.yaw);
-  // display.print("PITCH: "); display.println(imu_mpu.pitch);
-  // display.print("ROLL: "); display.println(imu_mpu.roll);
-  // display.display();
-  // delay(100);
-
-  
-
-  // deltax.Thetax_offset=imu_mpu.pitch;
-  // deltax.Thetay_offset=imu_mpu.roll;
-  // deltax.Thetaz_offset=imu_mpu.yaw;
-
   // motor1.zeroPointCurrent = 0.05;
   // motor2.zeroPointCurrent = 0.11;
   // motor3.zeroPointCurrent = 0.18;
@@ -321,57 +305,52 @@ void setup() {
   update_web = millis();
 }
 
-uint32_t deltat = 0;
-bool mot3_sign = false;
-
 void loop() {
 
   start_time = micros();
+  // State reconstruction. Does not reconstruct Z (rotation) model state
+  TEMPVEC_omega_wheels << (float) omniangles.dw1, (float) omniangles.dw2, (float) omniangles.dw3;
+  TEMPVEC_omega_body << IMUangles.dw1, IMUangles.dw2, IMUangles.dw3;
+  TEMPVEC_phi = MAT_odometryEncTransform * TEMPVEC_omega_wheels + MAT_odometryIMUTransform * TEMPVEC_omega_body;
+  // Phi reconstruction for X and Y
+  VEC_stateX(0) += 0.000001 * deltat * TEMPVEC_phi(0);
+  VEC_stateY(0) += 0.000001 * deltat * TEMPVEC_phi(1); 
+  VEC_stateZ(0) += 0.000001 * deltat * TEMPVEC_phi(2);
+  // dPhi reconstruction
+  VEC_stateX(2) = TEMPVEC_phi(0);
+  VEC_stateY(2) = TEMPVEC_phi(1);
+  VEC_stateZ(2) = TEMPVEC_phi(2);
+  // Theta and dTheta reconstruction
+  VEC_stateX(1) = IMUangles.w1;
+  VEC_stateY(1) = IMUangles.w2;
+  VEC_stateZ(1) = IMUangles.w3;
+  VEC_stateX(3) = IMUangles.dw1;
+  VEC_stateY(3) = IMUangles.dw2;
+  VEC_stateZ(3) = IMUangles.dw3;
+  // Proximamente: State estimation
+  // Control Law
+  VEC_torqueVirtual(0) = GAIN_lqrControl.dot(VEC_stateX);
+  VEC_torqueVirtual(0) *= -1;
+  VEC_torqueVirtual(1) = GAIN_lqrControl.dot(VEC_stateY);
+  VEC_torqueVirtual(1) *= -1;
+  // Torque reference system transform
+  VEC_torqueReal = MAT_torqueTransform * VEC_torqueVirtual;
+  // Saturate outputs
+  saturate_torques(VEC_torqueReal);
+  // Update torque setpoints
+  motor1.setTorque(VEC_torqueReal(0));
+  motor3.setTorque(VEC_torqueReal(1));
+  motor2.setTorque(VEC_torqueReal(2));
 
-  //Código principal
-  
-  //Esto probablemente deba ir en una interrupción cuando la RasPi manda que se actualice el estado
-  //get_opPoint(&M_od_omniangles, &M_od_IMUangles, &M_torques, &K, &x0, &u0, 1);
-  
-  //-------->Funciones para leer angulos IMU, encoders, que entregan structs para omniangulos y angulos encoder
-  //read_IMU(&IMUangles, imu, deltat);
-  
-  //Arma estado deltax
-  //get_phi(&deltax, &x0, &M_od_omniangles, &M_od_IMUangles, &omniangles, &IMUangles, deltat);
-  //get_theta(&deltax, &IMUangles, &x0);
-
-  //Se obtiene T_virtual=u0+deltau=-kdeltax+u0
-  //control_signal(&T_virtual, &K, &u0, &deltax);
-  //torque_conversion(&M_torques, &T_real, &T_virtual);
-
-  motor1.setTorque(1.5);
-  motor2.setTorque(1.0);
-  motor3.setTorque(0.5);
-
-  Serial.print(""); Serial.print(motor1.torque_measured);  // PITCH
-  Serial.print(" "); Serial.print(motor2.torque_measured); // ROLL
-  Serial.print(" "); Serial.print(motor3.torque_measured); // YAW
-  Serial.println("");
-
-
-  if (millis() - update_web > 2000) {
+  if (millis() - update_web > 100) {
     update_web = millis();
-
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.setTextColor(WHITE);
-
-    display.print("t1: "); display.print(motor1.getTorque(), 2); display.print("|e1: "); display.println(motor1.getError(), 2);
-    display.print("t2: "); display.print(motor2.getTorque(), 2); display.print("|e2: "); display.println(motor2.getError(), 2);
-    display.print("t3: "); display.print(motor3.getTorque(), 2); display.print("|e3: "); display.println(motor3.getError(), 2);
-    display.setCursor(0, 24);
-    display.print("dt:"); display.println(deltat);
-    display.display();
+    Serial.print(motor1.torque_setpoint); Serial.print(" ");
+    Serial.print(motor2.torque_setpoint); Serial.print(" ");
+    Serial.print(motor3.torque_setpoint); Serial.print("");
   }
 
   deltat = micros() - start_time;
 }
-
 
 void enc_update() {
   TeensyDelay::trigger(TIMER_DELAY_ENC, TIMER_CHANNEL_ENC);
@@ -380,10 +359,9 @@ void enc_update() {
   omniangles.dw1 = omegaFilter1.updateFilter(omniangles.dw1);
   omniangles.dw2 = omegaFilter2.updateFilter(omniangles.dw2);
   omniangles.dw3 = omegaFilter3.updateFilter(omniangles.dw3);
-
   updateInterruptIMU();
   quaternionToDegrees();
-  read_IMU(&IMUangles, imu_mpu.pitch - imu_pitch_offset, imu_mpu.roll - imu_roll_offset, imu_mpu.yaw - imu_yaw_offset);
+  read_IMU(&IMUangles, -1*(imu_mpu.pitch - imu_pitch_offset), -1*(imu_mpu.roll - imu_roll_offset), -1*(imu_mpu.yaw - imu_yaw_offset));
   IMUangles.dw1 = imuFilter1.updateFilter(IMUangles.dw1);
   IMUangles.dw2 = imuFilter2.updateFilter(IMUangles.dw2);
   IMUangles.dw3 = imuFilter3.updateFilter(IMUangles.dw3);
@@ -396,6 +374,12 @@ void motor_update() {
   motor3.updateMotor(adc->analogRead(motor3.csPin));
 }
 
+void saturate_torques(Eigen::Ref<Eigen::Vector3f> t_mat) {
+  for (int i = 0; i < 3; i++) {
+    if (t_mat(i) > TORQUE_SATURATION_LIMIT) t_mat(i) = TORQUE_SATURATION_LIMIT;
+    if (t_mat(i) < -TORQUE_SATURATION_LIMIT) t_mat(i) = -TORQUE_SATURATION_LIMIT;
+  }
+}
 
 void updateInterruptIMU() {
   if(imu_mpu.readByte(MPU9250_ADDRESS, INT_STATUS) & 0x01) {
@@ -414,11 +398,7 @@ void updateInterruptIMU() {
   }
   imu_mpu.updateTime();
   MahonyQuaternionUpdate(imu_mpu.ax, imu_mpu.ay, imu_mpu.az, imu_mpu.gx * DEG_TO_RAD, imu_mpu.gy * DEG_TO_RAD, imu_mpu.gz * DEG_TO_RAD, imu_mpu.my, imu_mpu.mx, -1*imu_mpu.mz, imu_mpu.deltat);
-  // MahonyQuaternionUpdate(imu_mpu.ax, -imu_mpu.ay, -imu_mpu.az, imu_mpu.gx * DEG_TO_RAD, -imu_mpu.gy * DEG_TO_RAD, -imu_mpu.gz * DEG_TO_RAD, imu_mpu.my, -imu_mpu.mx, imu_mpu.mz, imu_mpu.deltat);
-  // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
-  // MahonyQuaternionUpdate(-1*imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD, -1*imu.gy * DEG_TO_RAD, -1*imu.gz * DEG_TO_RAD, imu.my, -1*imu.mx, imu.mz, imu.deltat);
 }
-
 
 void quaternionToDegrees() {
   imu_mpu.yaw = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
@@ -432,4 +412,25 @@ void quaternionToDegrees() {
                       * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) + *(getQ()+3)
                       * *(getQ()+3));
   imu_mpu.yaw -= MAGNETIC_DECLINATION * DEG_TO_RAD;
+}
+
+void blink_led(int period, int repeat) {
+  for (int i = 0; i < repeat; i++) {
+    digitalWrite(13, HIGH);
+    delay(period);
+    digitalWrite(13, LOW);
+    delay(period);
+  }
+}
+
+void raise_error(const char* error_message) {
+  Serial.println(F("Error during execution."));
+  Serial.println(error_message);
+  Serial.println(F("Freezing robot ..."));
+  while(true) {
+    digitalWriteFast(LEDG1, HIGH);
+    digitalWriteFast(LEDR2, !digitalReadFast(LEDR2));
+    digitalWriteFast(LEDR1, !digitalReadFast(LEDR1));
+    delay(500);
+  }
 }

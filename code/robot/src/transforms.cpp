@@ -21,7 +21,6 @@ void read_IMU(ANGLES* IMUangles, float pitch, float roll, float yaw) {
     IMUangles->w1 = pitch;
     IMUangles->w2 = roll;
     IMUangles->w3 = yaw;
-
 }
 
 void read_enc(volatile ANGLES* omniangles, int32_t enc1, int32_t enc2, int32_t enc3){
