@@ -4,7 +4,7 @@
 #include <inttypes.h>
 
 
-#define FILTER_ORDER 10
+#define FILTER_ORDER 50
 
 class MovingAverageFilter {
 public:

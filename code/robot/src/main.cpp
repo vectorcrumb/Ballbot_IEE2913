@@ -153,14 +153,15 @@ void setup() {
   VEC_torqueReal << 0, 0, 0;
   VEC_torque0 << 0, 0, 0;
 
-  // GAIN_lqrControl << 0.0039, 9.8109, 0.1275, 3.4596;
+  GAIN_lqrControl << 0.0039, 9.8109, 0.1275, 3.4596;
   // GAIN_lqrControl << 0.0052, 61.0197, 0.1217, 5.5012;
 
   // GAIN_lqrControl << 0.00070257015141, 9.547963918279745, 0.016563046688473, 1.771180854469351;
   // GAIN_lqrYawControl << 0.0, 0.001814119036152, 0.0, 0.605896706265266;
 
-  GAIN_lqrControl << 0.0039, 4.8109, 0.0575, 2.4596;
-  GAIN_lqrYawControl << 1.0, 0.1, 0.8, 3.6;
+  // GAIN_lqrControl << 0.0039, 4.8109, 0.0575, 2.2596;
+  // GAIN_lqrControl << 0.0039, 5.8109, 0.0575, 2.2596;
+  GAIN_lqrYawControl << 0.5, 0.1, 0.8, 2.6;
 
 
   /**
