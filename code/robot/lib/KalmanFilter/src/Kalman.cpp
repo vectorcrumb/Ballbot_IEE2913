@@ -3,11 +3,12 @@
 KalmanFilter::KalmanFilter(
         float dt,
         const Eigen::MatrixXf& A,
+        const Eigen::MatrixXf& B,
         const Eigen::MatrixXf& C,
         const Eigen::MatrixXf& Q,
         const Eigen::MatrixXf& R,
         const Eigen::MatrixXf& P)
-    : A(A), C(C), Q(Q), R(R), P0(P),
+    : A(A), B(B), C(C), Q(Q), R(R), P0(P),
     m(C.rows()), n(A.rows()), dt(dt), initialized(false),
     I(n, n), x_hat(n), x_hat_new(n) {
     I.setIdentity();
@@ -30,10 +31,10 @@ void KalmanFilter::init() {
     initialized = true;
 }
 
-bool KalmanFilter::update(const Eigen::VectorXf& y) {
+bool KalmanFilter::update(const Eigen::VectorXf& y, float u) {
     if(!initialized) return false;
     // Prediction
-    x_hat_new = A * x_hat;
+    x_hat_new = A * x_hat + B * u;
     P = A * P * A.transpose() + Q;
     // Correction
     K = P * C.transpose() * (C * P * C.transpose() + R).inverse();
@@ -46,8 +47,8 @@ bool KalmanFilter::update(const Eigen::VectorXf& y) {
 }
 
 
-bool KalmanFilter::update(const Eigen::VectorXf& y, float dt, const Eigen::MatrixXf A) {
+bool KalmanFilter::update(const Eigen::VectorXf& y, float u, float dt, const Eigen::MatrixXf A) {
     this->A = A;
     this->dt = dt;
-    return this->update(y);
+    return this->update(y, u);
 }

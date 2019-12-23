@@ -9,6 +9,7 @@ public:
     KalmanFilter(
         float dt,
         const Eigen::MatrixXf& A,
+        const Eigen::MatrixXf& B,
         const Eigen::MatrixXf& C,
         const Eigen::MatrixXf& Q,
         const Eigen::MatrixXf& R,
@@ -17,8 +18,8 @@ public:
     KalmanFilter();
     void init();
     void init(float t0, const Eigen::VectorXf& x0);
-    bool update(const Eigen::VectorXf& y);
-    bool update(const Eigen::VectorXf& y, float dt, const Eigen::MatrixXf A);
+    bool update(const Eigen::VectorXf& y, float u);
+    bool update(const Eigen::VectorXf& y, float u, float dt, const Eigen::MatrixXf A);
     Eigen::VectorXf state() {
         return x_hat;
     };
@@ -26,7 +27,7 @@ public:
         return t;
     };
 private:
-    Eigen::MatrixXf A, C, Q, R, P, K, P0;
+    Eigen::MatrixXf A, B, C, Q, R, P, K, P0;
     int16_t m, n;
     float t0, t;
     float dt;

@@ -51,6 +51,7 @@
 #include <TeensyDelay.h>
 #include <ADC.h>
 #include <Eigen.h>
+#include <Kalman.hpp>
 
 #include "logo.h"
 #include "SPI.h"
@@ -96,6 +97,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
 ADC * adc = new ADC();
 MovingAverageFilter omegaFilter1, omegaFilter2, omegaFilter3;
 MovingAverageFilter imuFilter1, imuFilter2, imuFilter3;
+KalmanFilter * KFx, * KFy, * KFz;
 
 volatile ANGLES omniangles;
 volatile ANGLES IMUangles;
@@ -115,8 +117,7 @@ bool updateInterruptIMU();
 void enc_update();
 void motor_update();
 void saturate_torques(Eigen::Ref<Eigen::Vector3f> t_mat);
-
-
+void print_mat(const Eigen::MatrixXf& X);
 
 Eigen::Matrix3f MAT_torqueTransform;
 Eigen::Matrix3f MAT_odometryEncTransform, MAT_odometryIMUTransform; 
@@ -124,6 +125,9 @@ Eigen::Vector4f VEC_stateX, VEC_stateY, VEC_stateZ, VEC_stateX0, VEC_stateY0, VE
 Eigen::Vector3f VEC_torqueVirtual, VEC_torqueReal, VEC_torque0;
 Eigen::Vector4f GAIN_lqrControl, GAIN_lqrYawControl;
 Eigen::Vector3f TEMPVEC_phi, TEMPVEC_omega_wheels, TEMPVEC_omega_body;
+Eigen::Matrix4f Axy, Cxy, Az, Cz;
+Eigen::Matrix<float, 4, 1> Bxy, Bz;
+Eigen::DiagonalMatrix<float, 4> Qx, Rx, Px, Qy, Ry, Py, Qz, Rz, Pz;
 
 
 void setup() {
@@ -138,22 +142,22 @@ void setup() {
                               0, 1, 0, 
                               0, 0, 1;
   
-  TEMPVEC_phi << 0, 0, 0;
-  TEMPVEC_omega_wheels << 0, 0, 0;
-  TEMPVEC_omega_body << 0, 0, 0;
+  TEMPVEC_phi << 0.0, 0.0, 0.0;
+  TEMPVEC_omega_wheels << 0.0, 0.0, 0.0;
+  TEMPVEC_omega_body << 0.0, 0.0, 0.0;
 
-  VEC_stateX << 0, 0, 0, 0;
-  VEC_stateY << 0, 0, 0, 0;
-  VEC_stateZ << 0, 0, 0, 0;
-  VEC_stateX0 << 0, 0, 0, 0;
-  VEC_stateY0 << 0, 0, 0, 0;
-  VEC_stateZ0 << 0, 0, 0, 0;
+  VEC_stateX << 0.0, 0.0, 0.0, 0.0;
+  VEC_stateY << 0.0, 0.0, 0.0, 0.0;
+  VEC_stateZ << 0.0, 0.0, 0.0, 0.0;
+  VEC_stateX0 << 0.0, 0.0, 0.0, 0.0;
+  VEC_stateY0 << 0.0, 0.0, 0.0, 0.0;
+  VEC_stateZ0 << 0.0, 0.0, 0.0, 0.0;
 
-  VEC_torqueVirtual << 0, 0, 0;
-  VEC_torqueReal << 0, 0, 0;
-  VEC_torque0 << 0, 0, 0;
+  VEC_torqueVirtual << 0.0, 0.0, 0.0;
+  VEC_torqueReal << 0.0, 0.0, 0.0;
+  VEC_torque0 << 0.0, 0.0, 0.0;
 
-  GAIN_lqrControl << 0.0039, 9.8109, 0.1275, 3.4596;
+  // GAIN_lqrControl << 0.0039, 9.8109, 0.1275, 3.4596;
   // GAIN_lqrControl << 0.0052, 61.0197, 0.1217, 5.5012;
 
   // GAIN_lqrControl << 0.00070257015141, 9.547963918279745, 0.016563046688473, 1.771180854469351;
@@ -161,7 +165,40 @@ void setup() {
 
   // GAIN_lqrControl << 0.0039, 4.8109, 0.0575, 2.2596;
   // GAIN_lqrControl << 0.0039, 5.8109, 0.0575, 2.2596;
+
+  // Law from pole placement
+  GAIN_lqrControl << 0.030106, 9.972895, 0.370508, 4.359583;
+
   GAIN_lqrYawControl << 0.5, 0.1, 0.8, 2.6;
+
+  Rx.diagonal() << 1.0077, 1, 70.7356, 140.7356;
+  Ry.diagonal() << 1.0, 1.0, 60.0, 180.0;
+  Rz.diagonal() << 1.0, 1.0062, 48.6637, 48.6637;
+
+  Qx.diagonal() << 10, 0.01, 0.1, 1;
+  Qy.diagonal() << 10, 0.01, 0.1, 1;
+  Qz.diagonal() << 10, 0.01, 0.1, 1;
+
+  Px.diagonal() << 0.01, 0.1, 1, 100;
+  Py.diagonal() << 0.01, 0.1, 1, 100;
+  Pz.diagonal() << 0.01, 0.1, 1, 100;
+
+  Axy << 1.0, -0.00293460478, 0.02, -0.0000195616125,
+         0.0, 1.00185581, 0.0, 0.0200123705,
+         0.0, -0.293551212, 1.0, -0.00293460478,
+         0.0, 0.18563838, 0.0, 1.00185581;
+  Bxy <<  -0.00990146,
+          0.00141342,
+          -0.99021501,
+          0.14138581;
+  Cxy.setIdentity();
+  Az << 1.0, 0.02, 0.0, 1.0;
+  Bz << 0.01647834, 1.64783416;
+  Cz.setIdentity();
+
+  KFx = new KalmanFilter(0.010, Axy, Bxy, Cxy, Qx, Rx, Px);
+  KFy = new KalmanFilter(0.010, Axy, Bxy, Cxy, Qy, Ry, Py);
+  KFz = new KalmanFilter(0.010, Az, Bz, Cz, Qz, Rz, Pz);
 
 
   /**
@@ -296,12 +333,100 @@ void setup() {
 
   start_time = micros();
   update_web = millis();
+
+  KFx->init(millis() / 1000.0, VEC_stateX0);
+  KFy->init(millis() / 1000.0, VEC_stateY0);
+  KFz->init(millis() / 1000.0, VEC_stateZ0);
 }
 
 void loop() {
 
   start_time = micros();
-  // State reconstruction. Does not reconstruct Z (rotation) model state
+  
+  // Proximamente: State estimation
+  // Torque reference system transform
+  VEC_torqueReal = MAT_torqueTransform * VEC_torqueVirtual;
+  // Saturate outputs
+  saturate_torques(VEC_torqueReal);
+  // Update torque setpoints. Motors 2 and 3 are flipped due to CW order in model and CCW orden in robot
+  motor1.setTorque(VEC_torqueReal(0));
+  motor3.setTorque(VEC_torqueReal(1));
+  motor2.setTorque(VEC_torqueReal(2));
+  
+  
+
+  if (millis() - update_web > 100) {
+    update_web = millis();
+
+    Serial.println("Virtual torques vector:");
+    print_mat(VEC_torqueVirtual);
+
+    // Timestamp
+    // Serial.print(millis()); Serial.print(",");
+
+    // Debug virtual torques
+    // Serial.print(VEC_torqueVirtual(0)); Serial.print(",");
+    // Serial.print(VEC_torqueVirtual(1)); Serial.print(",");
+    // Serial.print(VEC_torqueVirtual(2)); Serial.println("");
+
+    // Debug real torques
+    // Serial.print(VEC_torqueVirtual(0)); Serial.print(",");
+    // Serial.print(VEC_torqueVirtual(1)); Serial.print(",");
+    // Serial.print(VEC_torqueVirtual(2)); Serial.println("");
+
+    // Debug measured torques
+    // Serial.print(motor1.torque_measured); Serial.print(",");
+    // Serial.print(motor2.torque_measured); Serial.print(",");
+    // Serial.print(motor3.torque_measured); Serial.println("");
+
+    // Debug torque setpoints
+    // Serial.print(motor1.torque_setpoint); Serial.print(",");
+    // Serial.print(motor2.torque_setpoint); Serial.print(",");
+    // Serial.print(motor3.torque_setpoint); Serial.println("");
+
+    // Debug voltages
+    // Serial.print(motor1.output); Serial.print(",");
+    // Serial.print(motor2.output); Serial.print(",");
+    // Serial.print(motor3.output); Serial.println("");
+
+    // Debug state X
+    // Serial.print(VEC_stateX(0) * RAD_TO_DEG); Serial.print(",");
+    // Serial.print(VEC_stateX(1) * RAD_TO_DEG); Serial.print(",");
+    // Serial.print(VEC_stateX(2) * RAD_TO_DEG); Serial.print(",");
+    // Serial.print(VEC_stateX(3) * RAD_TO_DEG); Serial.println("");
+
+    // Debug state Y
+    // Serial.print(VEC_stateY(0) * RAD_TO_DEG); Serial.print(",");
+    // Serial.print(VEC_stateY(1) * RAD_TO_DEG); Serial.print(",");
+    // Serial.print(VEC_stateY(2) * RAD_TO_DEG); Serial.print(",");
+    // Serial.print(VEC_stateY(3) * RAD_TO_DEG); Serial.println("");
+
+    // Debug state Z
+    // Serial.print(VEC_stateZ(0) * RAD_TO_DEG); Serial.print(",");
+    // Serial.print(VEC_stateZ(1) * RAD_TO_DEG); Serial.print(",");
+    // Serial.print(VEC_stateZ(2) * RAD_TO_DEG); Serial.print(",");
+    // Serial.print(VEC_stateZ(3) * RAD_TO_DEG); Serial.println("");
+  }
+
+  deltat = micros() - start_time;
+}
+
+void enc_update() {
+  // Restart time trigger
+  TeensyDelay::trigger(TIMER_DELAY_ENC, TIMER_CHANNEL_ENC);
+  // Read encoders and filter
+  read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read());
+  omniangles.dw1 = omegaFilter1.updateFilter(omniangles.dw1);
+  omniangles.dw2 = omegaFilter2.updateFilter(omniangles.dw2);
+  omniangles.dw3 = omegaFilter3.updateFilter(omniangles.dw3);
+  // Read IMU and filter
+  updateInterruptIMU();
+  quaternionToDegrees();
+  read_IMU(&IMUangles, -1*(imu_mpu.pitch - imu_pitch_offset), -1*(imu_mpu.roll - imu_roll_offset), -1*(imu_mpu.yaw - imu_yaw_offset));
+  IMUangles.dw1 = imuFilter1.updateFilter(IMUangles.dw1);
+  IMUangles.dw2 = imuFilter2.updateFilter(IMUangles.dw2);
+  IMUangles.dw3 = imuFilter3.updateFilter(IMUangles.dw3);
+  // State reconstruction. 
   TEMPVEC_omega_wheels << (float) omniangles.dw1, (float) omniangles.dw2, (float) omniangles.dw3;
   TEMPVEC_omega_body << (float) IMUangles.dw1, (float) IMUangles.dw2, (float) IMUangles.dw3;
   TEMPVEC_phi = MAT_odometryEncTransform * TEMPVEC_omega_wheels + MAT_odometryIMUTransform * TEMPVEC_omega_body;
@@ -320,46 +445,17 @@ void loop() {
   VEC_stateX(3) = IMUangles.dw1;
   VEC_stateY(3) = IMUangles.dw2;
   VEC_stateZ(3) = IMUangles.dw3;
-  // Proximamente: State estimation
   // Control Law: LQR
-  VEC_torqueVirtual(0) = GAIN_lqrControl.dot(VEC_stateX);
-  VEC_torqueVirtual(1) = GAIN_lqrControl.dot(VEC_stateY);
-  VEC_torqueVirtual(2) = GAIN_lqrYawControl.dot(VEC_stateZ);
+  VEC_torqueVirtual(0) = GAIN_lqrControl.dot((Eigen::Vector4f) KFx->state());
+  VEC_torqueVirtual(1) = GAIN_lqrControl.dot((Eigen::Vector4f) KFy->state());
+  VEC_torqueVirtual(2) = GAIN_lqrYawControl.dot((Eigen::Vector4f) KFz->state());
   VEC_torqueVirtual(0) *= -1;
   VEC_torqueVirtual(1) *= -1;
   VEC_torqueVirtual(2) *= -1;
-  // Torque reference system transform
-  VEC_torqueReal = MAT_torqueTransform * VEC_torqueVirtual;
-  // Saturate outputs
-  saturate_torques(VEC_torqueReal);
-  // Update torque setpoints. Motors 2 and 3 are flipped due to CW order in model and CCW orden in robot
-  motor1.setTorque(VEC_torqueReal(0));
-  motor3.setTorque(VEC_torqueReal(1));
-  motor2.setTorque(VEC_torqueReal(2));
-
-  if (millis() - update_web > 100) {
-    update_web = millis();
-    Serial.print(IMUangles.w1); Serial.print(" ");
-    Serial.print(IMUangles.w2); Serial.print(" ");
-    Serial.print(IMUangles.w3); Serial.println("");
-  }
-
-  deltat = micros() - start_time;
-}
-
-void enc_update() {
-  TeensyDelay::trigger(TIMER_DELAY_ENC, TIMER_CHANNEL_ENC);
-
-  read_enc(&omniangles, enc1.read(), enc2.read(), enc3.read());
-  omniangles.dw1 = omegaFilter1.updateFilter(omniangles.dw1);
-  omniangles.dw2 = omegaFilter2.updateFilter(omniangles.dw2);
-  omniangles.dw3 = omegaFilter3.updateFilter(omniangles.dw3);
-  updateInterruptIMU();
-  quaternionToDegrees();
-  read_IMU(&IMUangles, -1*(imu_mpu.pitch - imu_pitch_offset), -1*(imu_mpu.roll - imu_roll_offset), -1*(imu_mpu.yaw - imu_yaw_offset));
-  IMUangles.dw1 = imuFilter1.updateFilter(IMUangles.dw1);
-  IMUangles.dw2 = imuFilter2.updateFilter(IMUangles.dw2);
-  IMUangles.dw3 = imuFilter3.updateFilter(IMUangles.dw3);
+  // State estimation
+  KFx->update(VEC_stateX, VEC_torqueVirtual(0));
+  KFy->update(VEC_stateY, VEC_torqueVirtual(1));
+  KFz->update(VEC_stateZ, VEC_torqueVirtual(2));
 }
 
 void motor_update() {
@@ -431,4 +527,18 @@ void raise_error(const char* error_message) {
     digitalWriteFast(LEDR1, !digitalReadFast(LEDR1));
     delay(500);
   }
+}
+
+void print_mat(const Eigen::MatrixXf& X) {
+  int i, j, nrow, ncol;
+  nrow = X.rows();
+  ncol = X.cols();
+  for (i = 0; i < nrow; i++) {
+    for (j = 0; j < ncol; j++) {
+      Serial.print(X(i, j), 6);
+      Serial.print(", ");
+    }
+    Serial.println();
+  }
+  Serial.println();
 }
